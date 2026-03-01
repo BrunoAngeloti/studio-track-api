@@ -1,4 +1,5 @@
 import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
+import { Category } from './Category';
 
 type StudioAttributes = {
   id: string;
@@ -62,5 +63,12 @@ export class Studio extends Model<StudioAttributes, StudioCreationAttributes>
         underscored: true, // <-- isso alinha created_at/updated_at
       }
     );
+  }
+
+  static associate() {
+    Studio.hasMany(Category, {
+      foreignKey: 'studio_id',
+      as: 'categories',
+    });
   }
 }
