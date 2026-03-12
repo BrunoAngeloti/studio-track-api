@@ -3,6 +3,7 @@
 import { Studio } from '../models/Studio';
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 export const createStudio = (req: Request, res: Response) => {
   const { name, email, password } = req.body;
@@ -107,3 +108,49 @@ export const deleteStudio = (req: Request, res: Response) => {
       res.status(500).json({ error: 'Failed to delete studio' });
     });
 }
+
+
+
+
+export const loginStudio = (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  Studio.findOne({ where: { email } })
+    .then((studio) => {
+      if (!studio) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
+      const isPasswordValid = bcrypt.compareSync(password, studio.password);
+
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
+      const token = jwt.sign(
+        {
+          id: studio.id,
+          email: studio.email,
+          name: studio.name,
+        },
+        process.env.JWT_SECRET as string,
+        {
+          expiresIn: '7d',
+        }
+      );
+
+      return res.status(200).json({
+        message: 'Login successful',
+        token,
+        studio: {
+          id: studio.id,
+          name: studio.name,
+          email: studio.email,
+        },
+      });
+    })
+    .catch((error) => {
+      console.error('Error during login:', error);
+      return res.status(500).json({ error: 'Failed to login' });
+    });
+};

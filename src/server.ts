@@ -1,7 +1,7 @@
 import express from 'express';
 import { Sequelize } from 'sequelize';
 import config from './config/database.js';
-
+import dotenv from 'dotenv';
 
 import studioRoutes from './routes/studioRoutes.ts';
 import categoryRoutes from './routes/categoriesRoutes.ts';
@@ -15,6 +15,7 @@ import { Transaction } from './models/Transaction.ts';
 import { Repasse } from './models/Repasse.ts';
 
 
+dotenv.config();
 const app = express();
 app.use(express.json());
 

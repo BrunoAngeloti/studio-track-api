@@ -5,12 +5,13 @@ import {
   getDashboardCategories,
   getDashboardRepasses,
 } from '../controllers/dashboardController.ts';
+import { authMiddleware } from '../middlewares/authMiddleware.ts';
 
 const router = Router();
 
-router.get('/dashboard/summary', getDashboardSummary);
-router.get('/dashboard/timeline', getDashboardTimeline);
-router.get('/dashboard/categories', getDashboardCategories);
-router.get('/dashboard/repasses', getDashboardRepasses);
+router.get('/dashboard/summary', authMiddleware, getDashboardSummary);
+router.get('/dashboard/timeline', authMiddleware, getDashboardTimeline);
+router.get('/dashboard/categories', authMiddleware, getDashboardCategories);
+router.get('/dashboard/repasses', authMiddleware, getDashboardRepasses);
 
 export default router;
