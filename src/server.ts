@@ -7,6 +7,7 @@ import studioRoutes from './routes/studioRoutes.ts';
 import categoryRoutes from './routes/categoriesRoutes.ts';
 import transactionsRoutes from './routes/transactionsRoutes.ts';
 import repassesRoutes from './routes/repassesRoutes.ts';
+import dashboardRoutes from './routes/dashboardRoutes.ts';
 
 import { Studio } from './models/Studio.ts';
 import { Category } from './models/Category.ts';
@@ -34,6 +35,7 @@ app.use('/api', studioRoutes);
 app.use('/api', categoryRoutes);
 app.use('/api', transactionsRoutes);
 app.use('/api', repassesRoutes);
+app.use('/api', dashboardRoutes);
 
 sequelize.sync().then(() => {
   app.listen(3000, () => {
