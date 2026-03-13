@@ -2,6 +2,7 @@ import express from 'express';
 import { Sequelize } from 'sequelize';
 import config from './config/database.js';
 import dotenv from 'dotenv';
+import cors from "cors"
 
 import studioRoutes from './routes/studioRoutes.ts';
 import categoryRoutes from './routes/categoriesRoutes.ts';
@@ -17,6 +18,11 @@ import { Repasse } from './models/Repasse.ts';
 
 dotenv.config();
 const app = express();
+
+app.use(cors({
+  origin: "http://localhost:3001",
+  credentials: true
+}));
 app.use(express.json());
 
 const sequelize = new Sequelize(config as any);
