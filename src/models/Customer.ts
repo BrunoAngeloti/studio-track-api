@@ -7,6 +7,7 @@ type CustomerAttributes = {
   studio_id: string;
   name: string;
   phone?: string;
+  archived: boolean;
 };
 
 type CustomerCreationAttributes = Optional<CustomerAttributes, 'id' | 'phone'>;
@@ -19,6 +20,7 @@ export class Customer
   declare studio_id: string;
   declare name: string;
   declare phone?: string;
+  declare archived: boolean;
 
   static initModel(sequelize: Sequelize): typeof Customer {
     return Customer.init(
@@ -42,6 +44,12 @@ export class Customer
         phone: {
           type: DataTypes.STRING,
           allowNull: true,
+        },
+
+        archived: {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
         },
       },
       {
