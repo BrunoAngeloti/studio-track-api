@@ -1,6 +1,7 @@
 import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
 import { Studio } from './Studio';
 import { Category } from './Category';
+import { Customer } from './Customer';
 
 type TransactionAttributes = {
   id: number;
@@ -9,14 +10,14 @@ type TransactionAttributes = {
   amount: number;
   date?: Date;
   category_id?: number;
-  client?: string;
+  customer_id?: number;
   payment_method?: string;
   note?: string;
 };
 
 type TransactionCreationAttributes = Optional<
   TransactionAttributes,
-  'id' | 'date' | 'category_id' | 'client' | 'payment_method' | 'note'
+  'id' | 'date' | 'category_id' | 'customer_id' | 'payment_method' | 'note'
 >;
 
 export class Transaction
@@ -65,8 +66,8 @@ export class Transaction
           type: DataTypes.INTEGER,
           allowNull: true,
         },
-        client: {
-          type: DataTypes.STRING,
+        customer_id: {
+          type: DataTypes.INTEGER,
           allowNull: true,
         },
         payment_method: {
@@ -97,6 +98,11 @@ export class Transaction
     Transaction.belongsTo(Category, {
       foreignKey: 'category_id',
       as: 'category',
+    });
+
+    Transaction.belongsTo(Customer, {
+      foreignKey: 'customer_id',
+      as: 'customer',
     });
   }
 }

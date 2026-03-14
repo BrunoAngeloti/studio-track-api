@@ -1,5 +1,7 @@
 import { Transaction } from '../models/Transaction';
+import { Customer } from '../models/Customer';
 import { Request, Response } from 'express';
+import { Op } from 'sequelize';
 
 export const createTransaction = (req: Request, res: Response) => {
   const {
@@ -8,7 +10,7 @@ export const createTransaction = (req: Request, res: Response) => {
     amount,
     date,
     category_id,
-    client,
+    customer_id,
     payment_method,
     note,
   } = req.body;
@@ -19,7 +21,7 @@ export const createTransaction = (req: Request, res: Response) => {
     amount,
     date,
     category_id,
-    client,
+    customer_id,
     payment_method,
     note,
   })
@@ -35,22 +37,83 @@ export const createTransaction = (req: Request, res: Response) => {
     });
 };
 
-export const getTransactions = (req: Request, res: Response) => {
-  Transaction.findAll()
-    .then((transactions) => {
-      res.status(200).json(transactions);
-    })
-    .catch((error) => {
-      console.error('Error fetching transactions:', error);
-      res.status(500).json({ error: 'Failed to fetch transactions' });
+export const getTransactions = async (req: Request, res: Response) => {
+  try {
+
+    const {
+      studio_id,
+      type,
+      category_id,
+      start_date,
+      end_date,
+      payment_method,
+      client,
+    } = req.query;
+
+    const where: any = {};
+
+    if (studio_id) {
+      where.studio_id = studio_id;
+    }
+
+    if (type) {
+      where.type = type;
+    }
+
+    if (category_id) {
+      where.category_id = category_id;
+    }
+
+    if (payment_method) {
+      where.payment_method = payment_method;
+    }
+
+    if (client) {
+      where.client = client;
+    }
+
+    if (start_date && end_date) {
+      where.date = {
+        [Op.between]: [start_date, end_date],
+      };
+    }
+
+    const transactions = await Transaction.findAll({
+      where,
+      include: [
+        {
+          model: Customer,
+          as: 'customer',
+          attributes: ['id', 'name', 'phone'],
+        },
+      ],
+      order: [['date', 'DESC']],
     });
+
+    res.status(200).json(transactions);
+
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+
+    res.status(500).json({
+      error: 'Failed to fetch transactions',
+    });
+  }
 };
 
 export const getTransactionById = (req: Request, res: Response) => {
   const rawId = req.params.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
 
-  Transaction.findByPk(id)
+  Transaction.findByPk(id, {
+    include: [
+      {
+        model: Customer,
+        as: 'customer',
+        attributes: ['id', 'name', 'phone'],
+      },
+    ],
+  })
     .then((transaction) => {
       if (transaction) {
         res.status(200).json({ transaction });
@@ -89,7 +152,7 @@ export const updateTransaction = (req: Request, res: Response) => {
     amount,
     date,
     category_id,
-    client,
+    customer_id,
     payment_method,
     note,
   } = req.body;
@@ -103,7 +166,7 @@ export const updateTransaction = (req: Request, res: Response) => {
             amount,
             date,
             category_id,
-            client,
+            customer_id,
             payment_method,
             note,
           })

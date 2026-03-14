@@ -9,11 +9,13 @@ import categoryRoutes from './routes/categoriesRoutes.ts';
 import transactionsRoutes from './routes/transactionsRoutes.ts';
 import repassesRoutes from './routes/repassesRoutes.ts';
 import dashboardRoutes from './routes/dashboardRoutes.ts';
+import customersRoutes from './routes/customerRoutes.ts';
 
 import { Studio } from './models/Studio.ts';
 import { Category } from './models/Category.ts';
 import { Transaction } from './models/Transaction.ts';
 import { Repasse } from './models/Repasse.ts';
+import { Customer } from './models/Customer.ts';
 
 
 dotenv.config();
@@ -31,11 +33,13 @@ Studio.initModel(sequelize);
 Category.initModel(sequelize);
 Transaction.initModel(sequelize);
 Repasse.initModel(sequelize);
+Customer.initModel(sequelize);
 
 Studio.associate();
 Category.associate();
 Transaction.associate();
 Repasse.associate();
+Customer.associate();
 
 
 app.use('/api', studioRoutes);
@@ -43,6 +47,7 @@ app.use('/api', categoryRoutes);
 app.use('/api', transactionsRoutes);
 app.use('/api', repassesRoutes);
 app.use('/api', dashboardRoutes);
+app.use('/api', customersRoutes);
 
 sequelize.sync().then(() => {
   app.listen(3000, () => {
