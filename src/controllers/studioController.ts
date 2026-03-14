@@ -1,11 +1,10 @@
-// Studio Controller mock
-
 import { Studio } from '../models/Studio';
-import { Request, Response } from 'express';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+import { Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
-export const createStudio = (req: Request, res: Response) => {
+export const createStudio = (req: AuthenticatedRequest, res: Response) => {
   const { name, email, password } = req.body;
 
   const hashedPassword = bcrypt.hashSync(password, 10);
@@ -34,28 +33,19 @@ export const createStudio = (req: Request, res: Response) => {
     });
 };
 
-export const getStudios = (req: Request, res: Response) => {
-  Studio.findAll()
-    .then((studios) => {
-      res.status(200).json(studios);
-    })
-    .catch((error) => {
-      console.error('Error fetching studios:', error);
-      res.status(500).json({ error: 'Failed to fetch studios' });
-    });
-};
+export const getStudios = (req: AuthenticatedRequest, res: Response) => {
 
-export const getStudioById = (req: Request, res: Response) => {
-  const rawId = req.params.id;
-  const id = Array.isArray(rawId) ? rawId[0] : rawId;
+  const studioId = req.studio?.id;
 
-  Studio.findByPk(id)
+  Studio.findByPk(studioId)
     .then((studio) => {
-      if (studio) {
-        res.status(200).json({ studio });
-      } else {
-        res.status(404).json({ error: 'Studio not found' });
+
+      if (!studio) {
+        return res.status(404).json({ error: 'Studio not found' });
       }
+
+      res.status(200).json({ studio });
+
     })
     .catch((error) => {
       console.error('Error fetching studio:', error);
@@ -63,28 +53,54 @@ export const getStudioById = (req: Request, res: Response) => {
     });
 };
 
-export const updateStudio = (req: Request, res: Response) => {
-  const rawId = req.params.id;
-  const id = Array.isArray(rawId) ? rawId[0] : rawId;
+export const getStudioById = (req: AuthenticatedRequest, res: Response) => {
 
-  Studio.findByPk(id)
+  const studioId = req.studio?.id;
+
+  Studio.findByPk(studioId)
     .then((studio) => {
-      if (studio) {
-        const { name, email, password } = req.body;
 
-        const updatedStudio = {
-          name,
-          email,
-          password: password ? bcrypt.hashSync(password, 10) : studio.password,
-        };
-
-        return studio.update(updatedStudio);
-      } else {
-        res.status(404).json({ error: 'Studio not found' });
+      if (!studio) {
+        return res.status(404).json({ error: 'Studio not found' });
       }
+
+      res.status(200).json({ studio });
+
+    })
+    .catch((error) => {
+      console.error('Error fetching studio:', error);
+      res.status(500).json({ error: 'Failed to fetch studio' });
+    });
+};
+
+export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
+
+  const studioId = req.studio?.id;
+
+  Studio.findByPk(studioId)
+    .then((studio) => {
+
+      if (!studio) {
+        res.status(404).json({ error: 'Studio not found' });
+        return;
+      }
+
+      const { name, email, password } = req.body;
+
+      const updatedStudio = {
+        name,
+        email,
+        password: password ? bcrypt.hashSync(password, 10) : studio.password,
+      };
+
+      return studio.update(updatedStudio);
     })
     .then((studio) => {
-      res.status(200).json({ studio });
+
+      if (studio) {
+        res.status(200).json({ studio });
+      }
+
     })
     .catch((error) => {
       console.error('Error updating studio:', error);
@@ -92,31 +108,39 @@ export const updateStudio = (req: Request, res: Response) => {
     });
 };
 
-export const deleteStudio = (req: Request, res: Response) => {
-  const { id } = req.params;
+export const deleteStudio = (req: AuthenticatedRequest, res: Response) => {
 
-  Studio.destroy({ where: { id } })
+  const studioId = req.studio?.id;
+
+  Studio.destroy({
+    where: {
+      id: studioId,
+    },
+  })
     .then((deleted) => {
+
       if (deleted) {
-        res.status(200).json({ message: `Studio with id ${id} deleted successfully` });
+        res.status(200).json({
+          message: `Studio deleted successfully`,
+        });
       } else {
         res.status(404).json({ error: 'Studio not found' });
       }
+
     })
     .catch((error) => {
       console.error('Error deleting studio:', error);
       res.status(500).json({ error: 'Failed to delete studio' });
     });
-}
+};
 
+export const loginStudio = (req: AuthenticatedRequest, res: Response) => {
 
-
-
-export const loginStudio = (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   Studio.findOne({ where: { email } })
     .then((studio) => {
+
       if (!studio) {
         return res.status(401).json({ error: 'Invalid email or password' });
       }

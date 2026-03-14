@@ -5,7 +5,7 @@ import { Customer } from './Customer';
 
 type TransactionAttributes = {
   id: number;
-  studio_id: number;
+  studio_id: string;
   type: 'INCOME' | 'EXPENSE';
   amount: number;
   date?: Date;
@@ -25,7 +25,7 @@ export class Transaction
   implements TransactionAttributes
 {
   declare id: number;
-  declare studio_id: number;
+  declare studio_id: string;
   declare type: 'INCOME' | 'EXPENSE';
   declare amount: number;
   declare date?: Date;
