@@ -1,6 +1,5 @@
 import { Op } from 'sequelize';
 import { Transaction } from '../models/Transaction';
-import { Repasse } from '../models/Repasse';
 import { Category } from '../models/Category';
 import { getDateRangeByPeriod } from '../utils/dateFilters';
 
@@ -13,6 +12,7 @@ export const getDashboardSummaryService = async ({
   studioId,
   period,
 }: SummaryParams) => {
+
   const { startDate, endDate } = getDateRangeByPeriod(period);
 
   const transactions = await Transaction.findAll({
@@ -21,12 +21,6 @@ export const getDashboardSummaryService = async ({
       date: {
         [Op.between]: [startDate, endDate],
       },
-    },
-  });
-
-  const repasses = await Repasse.findAll({
-    where: {
-      studio_id: studioId,
     },
   });
 
@@ -40,19 +34,12 @@ export const getDashboardSummaryService = async ({
 
   const balance = income - expense;
 
-  const repassesSummary = repasses.map((repasse) => {
-    const amount = (income * Number(repasse.percentage)) / 100;
+  // TODO: futuramente substituir por cálculo baseado em funcionários/comissões
+  const repassesSummary: any[] = [];
 
-    return {
-      id: repasse.id,
-      person_name: repasse.person_name,
-      percentage: Number(repasse.percentage),
-      amount,
-    };
-  });
+  const repasseTotal = 0;
 
-  const repasseTotal = repassesSummary.reduce((sum, repasse) => sum + repasse.amount, 0);
-  const ownerNet = balance - repasseTotal;
+  const ownerNet = balance;
 
   return {
     period,
@@ -105,17 +92,16 @@ export const getDashboardTransactionsByCategoryService = async ({
   transactions.forEach((transaction: any) => {
     const categoryName = transaction.category?.name || 'Sem categoria';
     const categoryColor = transaction.category?.color || null;
-    const key = categoryName;
 
-    if (!groupedMap.has(key)) {
-      groupedMap.set(key, {
+    if (!groupedMap.has(categoryName)) {
+      groupedMap.set(categoryName, {
         category: categoryName,
         color: categoryColor,
         total: 0,
       });
     }
 
-    const current = groupedMap.get(key);
+    const current = groupedMap.get(categoryName);
     current.total += Number(transaction.amount);
   });
 
@@ -179,13 +165,16 @@ export const getDashboardRepassesService = async ({
   studioId: string;
   period: string;
 }) => {
+
   const summary = await getDashboardSummaryService({ studioId, period });
+
+  // TODO: implementar cálculo real baseado em funcionários
 
   return {
     period: summary.period,
     gross_income: summary.income,
-    repasse_total: summary.repasse_total,
-    owner_net: summary.owner_net,
-    repasses: summary.repasses,
+    repasse_total: 0,
+    owner_net: summary.balance,
+    repasses: [],
   };
 };

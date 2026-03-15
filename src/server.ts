@@ -7,15 +7,15 @@ import cors from "cors"
 import studioRoutes from './routes/studioRoutes.ts';
 import categoryRoutes from './routes/categoriesRoutes.ts';
 import transactionsRoutes from './routes/transactionsRoutes.ts';
-import repassesRoutes from './routes/repassesRoutes.ts';
 import dashboardRoutes from './routes/dashboardRoutes.ts';
 import customersRoutes from './routes/customerRoutes.ts';
+import employeesRoutes from './routes/employeesRoutes.ts';
 
 import { Studio } from './models/Studio.ts';
 import { Category } from './models/Category.ts';
 import { Transaction } from './models/Transaction.ts';
-import { Repasse } from './models/Repasse.ts';
 import { Customer } from './models/Customer.ts';
+import { Employee } from './models/Employee.ts';
 
 
 dotenv.config();
@@ -32,22 +32,22 @@ const sequelize = new Sequelize(config as any);
 Studio.initModel(sequelize);
 Category.initModel(sequelize);
 Transaction.initModel(sequelize);
-Repasse.initModel(sequelize);
 Customer.initModel(sequelize);
+Employee.initModel(sequelize);
 
 Studio.associate();
 Category.associate();
 Transaction.associate();
-Repasse.associate();
 Customer.associate();
+Employee.associate();
 
 
 app.use('/api', studioRoutes);
 app.use('/api', categoryRoutes);
 app.use('/api', transactionsRoutes);
-app.use('/api', repassesRoutes);
 app.use('/api', dashboardRoutes);
 app.use('/api', customersRoutes);
+app.use('/api', employeesRoutes);
 
 sequelize.sync().then(() => {
   app.listen(3000, () => {

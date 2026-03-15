@@ -1,56 +1,71 @@
 import { Transaction } from '../models/Transaction';
 import { Customer } from '../models/Customer';
+import { Category } from '../models/Category';
+import { Employee } from '../models/Employee';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { Response } from 'express';
 import { Op } from 'sequelize';
 
-export const createTransaction = (req: AuthenticatedRequest, res: Response) => {
+export const createTransaction = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const studio_id = req.studio?.id;
 
-  const studio_id = req.studio?.id;
+    if (!studio_id) {
+      return res.status(400).json({ error: 'Studio ID is required' });
+    }
 
-  if (!studio_id) {
-    return res.status(400).json({ error: 'Studio ID is required' });
-  }
+    const {
+      type,
+      amount,
+      date,
+      category_id,
+      customer_id,
+      responsible_employee_id,
+      repasse_employee_id,
+      repasse_percentage,
+      payment_method,
+      note,
+      vendor
+    } = req.body;
 
-  const {
-    type,
-    amount,
-    date,
-    category_id,
-    customer_id,
-    payment_method,
-    note,
-    vendor
-  } = req.body;
-
-  Transaction.create({
-    studio_id,
-    type,
-    amount,
-    date,
-    category_id,
-    customer_id,
-    payment_method,
-    note,
-    vendor
-  })
-    .then((transaction) => {
-      res.status(201).json({ transaction });
-    })
-    .catch((error) => {
-      console.error('Error creating transaction:', error);
-
-      res.status(400).json({
-        error: error?.message ?? 'Failed to create transaction',
-        details: error?.errors?.map((e: any) => e.message),
-      });
+    const transaction = await Transaction.create({
+      studio_id,
+      type,
+      amount,
+      date,
+      category_id,
+      customer_id,
+      responsible_employee_id,
+      repasse_employee_id,
+      repasse_percentage,
+      payment_method,
+      note,
+      vendor
     });
+
+    return res.status(201).json({ transaction });
+
+  } catch (error: any) {
+
+    console.error('Error creating transaction:', error);
+
+    return res.status(400).json({
+      error: error?.message ?? 'Failed to create transaction',
+      details: error?.errors?.map((e: any) => e.message),
+    });
+  }
 };
+
+
 
 export const getTransactions = async (req: AuthenticatedRequest, res: Response) => {
   try {
 
     const studio_id = req.studio?.id;
+
+    if (!studio_id) {
+      return res.status(400).json({ error: 'Studio ID is required' });
+    }
 
     const {
       type,
@@ -59,11 +74,14 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
       end_date,
       payment_method,
       search = '',
-      page = 1,
-      limit = 20,
-    } = req.query;
+      page = '1',
+      limit = '20',
+    } = req.query as Record<string, string>;
 
-    const offset = (Number(page) - 1) * Number(limit);
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+
+    const offset = (pageNumber - 1) * limitNumber;
 
     const where: any = {
       studio_id,
@@ -87,15 +105,15 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
           },
         },
         {
-          '$customer.name$': {
+          vendor: {
             [Op.iLike]: `%${search}%`,
           },
         },
         {
-          vendor: {
+          '$customer.name$': {
             [Op.iLike]: `%${search}%`,
           },
-        }
+        },
       ];
     }
 
@@ -106,21 +124,40 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
           model: Customer,
           as: 'customer',
           attributes: ['id', 'name', 'phone'],
+          required: false,
+        },
+        {
+          model: Category,
+          as: 'category',
+          attributes: ['id', 'name', 'color'],
+          required: false,
+        },
+        {
+          model: Employee,
+          as: 'responsible_employee',
+          attributes: ['id', 'name', 'role'],
+          required: false,
+        },
+        {
+          model: Employee,
+          as: 'repasse_employee',
+          attributes: ['id', 'name', 'role'],
+          required: false,
         },
       ],
-      limit: Number(limit),
+      limit: limitNumber,
       offset,
       order: [['date', 'DESC']],
       distinct: true,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       data: rows,
       pagination: {
         total: count,
-        page: Number(page),
-        limit: Number(limit),
-        pages: Math.ceil(count / Number(limit)),
+        page: pageNumber,
+        limit: limitNumber,
+        pages: Math.ceil(count / limitNumber),
       },
     });
 
@@ -128,139 +165,157 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
 
     console.error('Error fetching transactions:', error);
 
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to fetch transactions',
     });
-
   }
 };
 
-export const getTransactionById = (req: AuthenticatedRequest, res: Response) => {
 
-  const id = req.params.id;
-  const studio_id = req.studio?.id;
 
-  Transaction.findOne({
-    where: {
-      id,
-      studio_id,
-    },
-    include: [
-      {
-        model: Customer,
-        as: 'customer',
-        attributes: ['id', 'name', 'phone'],
+export const getTransactionById = async (req: AuthenticatedRequest, res: Response) => {
+
+  try {
+
+    const id = req.params.id;
+    const studio_id = req.studio?.id;
+
+    const transaction = await Transaction.findOne({
+      where: {
+        id,
+        studio_id,
       },
-    ],
-  })
-    .then((transaction) => {
-
-      if (transaction) {
-        res.status(200).json({ transaction });
-      } else {
-        res.status(404).json({ error: 'Transaction not found' });
-      }
-
-    })
-    .catch((error) => {
-      console.error('Error fetching transaction:', error);
-      res.status(500).json({ error: 'Failed to fetch transaction' });
+      include: [
+        {
+          model: Customer,
+          as: 'customer',
+          attributes: ['id', 'name', 'phone'],
+        },
+        {
+          model: Category,
+          as: 'category',
+          attributes: ['id', 'name', 'color'],
+        },
+        {
+          model: Employee,
+          as: 'responsible_employee',
+          attributes: ['id', 'name', 'role'],
+        },
+        {
+          model: Employee,
+          as: 'repasse_employee',
+          attributes: ['id', 'name', 'role'],
+        },
+      ],
     });
+
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    return res.status(200).json({ transaction });
+
+  } catch (error) {
+
+    console.error('Error fetching transaction:', error);
+
+    return res.status(500).json({ error: 'Failed to fetch transaction' });
+  }
 };
 
-export const updateTransaction = (req: AuthenticatedRequest, res: Response) => {
 
-  const id = req.params.id;
-  const studio_id = req.studio?.id;
 
-  const {
-    type,
-    amount,
-    date,
-    category_id,
-    customer_id,
-    payment_method,
-    note,
-    vendor
-  } = req.body;
+export const updateTransaction = async (req: AuthenticatedRequest, res: Response) => {
 
-  Transaction.findOne({
-    where: {
-      id,
-      studio_id,
-    },
-  })
-    .then((transaction) => {
+  try {
 
-      if (!transaction) {
-        res.status(404).json({ error: 'Transaction not found' });
-        return;
-      }
+    const id = req.params.id;
+    const studio_id = req.studio?.id;
 
-      return transaction.update({
-        type,
-        amount,
-        date,
-        category_id,
-        customer_id,
-        payment_method,
-        note,
-        vendor
-      });
+    const {
+      type,
+      amount,
+      date,
+      category_id,
+      customer_id,
+      responsible_employee_id,
+      repasse_employee_id,
+      repasse_percentage,
+      payment_method,
+      note,
+      vendor
+    } = req.body;
 
-    })
-    .then((updatedTransaction) => {
-
-      if (updatedTransaction) {
-        res.status(200).json({ transaction: updatedTransaction });
-      }
-
-    })
-    .catch((error) => {
-
-      console.error('Error updating transaction:', error);
-
-      res.status(400).json({
-        error: error?.message ?? 'Failed to update transaction',
-        details: error?.errors?.map((e: any) => e.message),
-      });
+    const transaction = await Transaction.findOne({
+      where: {
+        id,
+        studio_id,
+      },
     });
+
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    await transaction.update({
+      type,
+      amount,
+      date,
+      category_id,
+      customer_id,
+      responsible_employee_id,
+      repasse_employee_id,
+      repasse_percentage,
+      payment_method,
+      note,
+      vendor
+    });
+
+    return res.status(200).json({ transaction });
+
+  } catch (error: any) {
+
+    console.error('Error updating transaction:', error);
+
+    return res.status(400).json({
+      error: error?.message ?? 'Failed to update transaction',
+      details: error?.errors?.map((e: any) => e.message),
+    });
+  }
 };
 
-export const deleteTransaction = (req: AuthenticatedRequest, res: Response) => {
 
-  const id = req.params.id;
-  const studio_id = req.studio?.id;
 
-  Transaction.findOne({
-    where: {
-      id,
-      studio_id,
-    },
-  })
-    .then((transaction) => {
+export const deleteTransaction = async (req: AuthenticatedRequest, res: Response) => {
 
-      if (!transaction) {
-        res.status(404).json({ error: 'Transaction not found' });
-        return;
-      }
+  try {
 
-      return transaction.destroy();
+    const id = req.params.id;
+    const studio_id = req.studio?.id;
 
-    })
-    .then(() => {
-
-      res.status(200).json({
-        message: 'Transaction deleted successfully',
-      });
-
-    })
-    .catch((error) => {
-
-      console.error('Error deleting transaction:', error);
-
-      res.status(500).json({
-        error: 'Failed to delete transaction',
-      });
+    const transaction = await Transaction.findOne({
+      where: {
+        id,
+        studio_id,
+      },
     });
+
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    await transaction.destroy();
+
+    return res.status(200).json({
+      message: 'Transaction deleted successfully',
+    });
+
+  } catch (error) {
+
+    console.error('Error deleting transaction:', error);
+
+    return res.status(500).json({
+      error: 'Failed to delete transaction',
+    });
+  }
 };

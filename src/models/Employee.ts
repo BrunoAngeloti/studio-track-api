@@ -1,33 +1,31 @@
 import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
 import { Studio } from './Studio';
 
-type RepasseAttributes = {
+type EmployeeAttributes = {
   id: number;
   studio_id: string;
-  person_name: string;
-  percentage: number;
-  created_at?: Date;
-  updated_at?: Date;
+  name: string;
+  role?: string;
+  active?: boolean;
 };
 
-type RepasseCreationAttributes = Optional<
-  RepasseAttributes,
-  'id' | 'created_at' | 'updated_at'
+type EmployeeCreationAttributes = Optional<
+  EmployeeAttributes,
+  'id' | 'role' | 'active'
 >;
 
-export class Repasse
-  extends Model<RepasseAttributes, RepasseCreationAttributes>
-  implements RepasseAttributes
+export class Employee
+  extends Model<EmployeeAttributes, EmployeeCreationAttributes>
+  implements EmployeeAttributes
 {
   declare id: number;
   declare studio_id: string;
-  declare person_name: string;
-  declare percentage: number;
-  declare created_at?: Date;
-  declare updated_at?: Date;
+  declare name: string;
+  declare role?: string;
+  declare active?: boolean;
 
-  static initModel(sequelize: Sequelize): typeof Repasse {
-    return Repasse.init(
+  static initModel(sequelize: Sequelize): typeof Employee {
+    return Employee.init(
       {
         id: {
           type: DataTypes.INTEGER,
@@ -39,19 +37,24 @@ export class Repasse
           type: DataTypes.UUID,
           allowNull: false,
         },
-        person_name: {
+        name: {
           type: DataTypes.STRING,
           allowNull: false,
         },
-        percentage: {
-          type: DataTypes.DECIMAL(10, 2),
+        role: {
+          type: DataTypes.STRING,
+          allowNull: true,
+        },
+        active: {
+          type: DataTypes.BOOLEAN,
           allowNull: false,
+          defaultValue: true,
         },
       },
       {
         sequelize,
-        tableName: 'repasses',
-        modelName: 'Repasse',
+        tableName: 'employees',
+        modelName: 'Employee',
         timestamps: true,
         underscored: true,
       }
@@ -59,7 +62,7 @@ export class Repasse
   }
 
   static associate() {
-    Repasse.belongsTo(Studio, {
+    Employee.belongsTo(Studio, {
       foreignKey: 'studio_id',
       as: 'studio',
     });
