@@ -70,9 +70,19 @@ export const getEmployees = async (req: AuthenticatedRequest, res: Response) => 
     }
 
     if (search) {
-      where.name = {
-        [Op.iLike]: `%${search}%`,
-      };
+      where[Op.or] = [
+        {
+          name: {
+            [Op.iLike]: `%${search}%`,
+          },
+        },
+        {
+          role: {
+            [Op.iLike]: `%${search}%`,
+          },
+        },
+      ];
+      
     }
 
     const { rows, count } = await Employee.findAndCountAll({
