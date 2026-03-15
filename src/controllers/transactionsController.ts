@@ -20,6 +20,7 @@ export const createTransaction = (req: AuthenticatedRequest, res: Response) => {
     customer_id,
     payment_method,
     note,
+    vendor
   } = req.body;
 
   Transaction.create({
@@ -31,6 +32,7 @@ export const createTransaction = (req: AuthenticatedRequest, res: Response) => {
     customer_id,
     payment_method,
     note,
+    vendor
   })
     .then((transaction) => {
       res.status(201).json({ transaction });
@@ -56,7 +58,12 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
       start_date,
       end_date,
       payment_method,
+      search = '',
+      page = 1,
+      limit = 20,
     } = req.query;
+
+    const offset = (Number(page) - 1) * Number(limit);
 
     const where: any = {
       studio_id,
@@ -72,7 +79,25 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
       };
     }
 
-    const transactions = await Transaction.findAll({
+    if (search) {
+      where[Op.or] = [
+        {
+          note: {
+            [Op.iLike]: `%${search}%`,
+          },
+          vendor: {
+            [Op.iLike]: `%${search}%`,
+          },
+        },
+        {
+          '$customer.name$': {
+            [Op.iLike]: `%${search}%`,
+          },
+        },
+      ];
+    }
+
+    const { rows, count } = await Transaction.findAndCountAll({
       where,
       include: [
         {
@@ -81,10 +106,21 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
           attributes: ['id', 'name', 'phone'],
         },
       ],
+      limit: Number(limit),
+      offset,
       order: [['date', 'DESC']],
+      distinct: true,
     });
 
-    res.status(200).json(transactions);
+    res.status(200).json({
+      data: rows,
+      pagination: {
+        total: count,
+        page: Number(page),
+        limit: Number(limit),
+        pages: Math.ceil(count / Number(limit)),
+      },
+    });
 
   } catch (error) {
 
@@ -93,6 +129,7 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
     res.status(500).json({
       error: 'Failed to fetch transactions',
     });
+
   }
 };
 
@@ -142,6 +179,7 @@ export const updateTransaction = (req: AuthenticatedRequest, res: Response) => {
     customer_id,
     payment_method,
     note,
+    vendor
   } = req.body;
 
   Transaction.findOne({
@@ -165,6 +203,7 @@ export const updateTransaction = (req: AuthenticatedRequest, res: Response) => {
         customer_id,
         payment_method,
         note,
+        vendor
       });
 
     })

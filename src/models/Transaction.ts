@@ -13,11 +13,12 @@ type TransactionAttributes = {
   customer_id?: number;
   payment_method?: string;
   note?: string;
+  vendor?: string;
 };
 
 type TransactionCreationAttributes = Optional<
   TransactionAttributes,
-  'id' | 'date' | 'category_id' | 'customer_id' | 'payment_method' | 'note'
+  'id' | 'date' | 'category_id' | 'customer_id' | 'payment_method' | 'note' | 'vendor'
 >;
 
 export class Transaction
@@ -33,6 +34,7 @@ export class Transaction
   declare client?: string;
   declare payment_method?: string;
   declare note?: string;
+  declare vendor?: string;
 
   static initModel(sequelize: Sequelize): typeof Transaction {
     return Transaction.init(
@@ -76,6 +78,10 @@ export class Transaction
         },
         note: {
           type: DataTypes.TEXT,
+          allowNull: true,
+        },
+        vendor: {
+          type: DataTypes.STRING,
           allowNull: true,
         },
       },
