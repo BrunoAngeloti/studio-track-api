@@ -85,15 +85,17 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
           note: {
             [Op.iLike]: `%${search}%`,
           },
-          vendor: {
-            [Op.iLike]: `%${search}%`,
-          },
         },
         {
           '$customer.name$': {
             [Op.iLike]: `%${search}%`,
           },
         },
+        {
+          vendor: {
+            [Op.iLike]: `%${search}%`,
+          },
+        }
       ];
     }
 
