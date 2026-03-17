@@ -431,7 +431,7 @@ export const getDashboardRecentTransactionsService = async ({
       {
         model: Category,
         as: 'category',
-        attributes: ['name'],
+        attributes: ['name', 'color'],
       },
       {
         model: Customer,
@@ -449,7 +449,8 @@ export const getDashboardRecentTransactionsService = async ({
     amount: Number(transaction.amount),
     date: transaction.date,
     category: transaction.category?.name || null,
-    customer: transaction.customer?.name || null,
+    category_color: transaction.category?.color || null,
+    customer: transaction.customer?.name ? transaction.customer?.name : transaction.vendor ? transaction.vendor : null,
     payment_method: transaction.payment_method || null,
   }))
 
