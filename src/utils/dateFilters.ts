@@ -1,37 +1,55 @@
+import {
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+} from 'date-fns';
+
 export type PeriodType = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+// 🔥 função chave: converte local → UTC corretamente
+const toUTC = (date: Date) => {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+};
 
 export const getDateRangeByPeriod = (period: string) => {
   const now = new Date();
 
-  let startDate = new Date(now);
-  let endDate = new Date(now);
+  let startLocal: Date;
+  let endLocal: Date;
 
-  if (period === 'daily') {
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
+  switch (period) {
+    case 'daily':
+      startLocal = startOfDay(now);
+      endLocal = endOfDay(now);
+      break;
+
+    case 'weekly':
+      startLocal = startOfWeek(now, { weekStartsOn: 1 });
+      endLocal = endOfWeek(now, { weekStartsOn: 1 });
+      break;
+
+    case 'monthly':
+      startLocal = startOfMonth(now);
+      endLocal = endOfMonth(now);
+      break;
+
+    case 'yearly':
+      startLocal = startOfYear(now);
+      endLocal = endOfYear(now);
+      break;
+
+    default:
+      startLocal = now;
+      endLocal = now;
   }
 
-  if (period === 'weekly') {
-    const day = now.getDay();
-    const diffToMonday = day === 0 ? 6 : day - 1;
-
-    startDate.setDate(now.getDate() - diffToMonday);
-    startDate.setHours(0, 0, 0, 0);
-
-    endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 6);
-    endDate.setHours(23, 59, 59, 999);
-  }
-
-  if (period === 'monthly') {
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  }
-
-  if (period === 'yearly') {
-    startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
-    endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-  }
-
-  return { startDate, endDate };
+  return {
+    startDate: toUTC(startLocal),
+    endDate: toUTC(endLocal),
+  };
 };

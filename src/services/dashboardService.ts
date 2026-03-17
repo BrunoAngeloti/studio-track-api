@@ -4,6 +4,7 @@ import { Category } from '../models/Category'
 import { Employee } from '../models/Employee'
 import { Customer } from '../models/Customer'
 import { getDateRangeByPeriod } from '../utils/dateFilters'
+import { format } from 'date-fns'
 
 type DashboardParams = {
   studioId: string
@@ -142,7 +143,9 @@ export const getDashboardCashflowService = async ({
   transactions.forEach((transaction) => {
 
     const date = new Date(transaction.date as Date)
-    const label = date.toISOString().split('T')[0]
+
+    // força usar UTC (sem shift)
+    const label = date.toISOString().slice(0, 10)
 
     if (!grouped.has(label)) {
 
