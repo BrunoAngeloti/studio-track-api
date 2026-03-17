@@ -1,85 +1,166 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+
 import {
   getDashboardSummaryService,
-  getDashboardTimelineService,
+  getDashboardCashflowService,
   getDashboardTransactionsByCategoryService,
-  getDashboardRepassesService,
+  getDashboardPaymentMethodsService,
+  getDashboardEmployeesService,
+  getDashboardRecentTransactionsService,
 } from '../services/dashboardService';
 
-export const getDashboardSummary = async (req: AuthenticatedRequest, res: Response) => {
+export const getDashboardSummary = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
 
     const studioId = req.studio?.id;
     const { period = 'monthly' } = req.query;
 
-    const summary = await getDashboardSummaryService({
+    const data = await getDashboardSummaryService({
       studioId: String(studioId),
       period: String(period),
     });
 
-    return res.status(200).json(summary);
+    return res.json(data);
 
   } catch (error) {
-    console.error('Error fetching dashboard summary:', error);
-    return res.status(500).json({ error: 'Failed to fetch dashboard summary' });
+
+    console.error('Dashboard summary error:', error);
+    return res.status(500).json({ error: 'Failed to fetch summary' });
+
   }
 };
 
-export const getDashboardTimeline = async (req: AuthenticatedRequest, res: Response) => {
+
+
+export const getDashboardCashflow = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
 
     const studioId = req.studio?.id;
     const { period = 'monthly' } = req.query;
 
-    const timeline = await getDashboardTimelineService({
+    const data = await getDashboardCashflowService({
       studioId: String(studioId),
       period: String(period),
     });
 
-    return res.status(200).json(timeline);
+    return res.json(data);
 
   } catch (error) {
-    console.error('Error fetching dashboard timeline:', error);
-    return res.status(500).json({ error: 'Failed to fetch dashboard timeline' });
+
+    console.error('Dashboard cashflow error:', error);
+    return res.status(500).json({ error: 'Failed to fetch cashflow' });
+
   }
 };
 
-export const getDashboardCategories = async (req: AuthenticatedRequest, res: Response) => {
+
+
+export const getDashboardCategories = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
 
     const studioId = req.studio?.id;
     const { period = 'monthly', type } = req.query;
 
-    const categories = await getDashboardTransactionsByCategoryService({
+    const data = await getDashboardTransactionsByCategoryService({
       studioId: String(studioId),
       period: String(period),
       type: type ? String(type) : undefined,
     });
 
-    return res.status(200).json(categories);
+    return res.json(data);
 
   } catch (error) {
-    console.error('Error fetching dashboard categories:', error);
-    return res.status(500).json({ error: 'Failed to fetch dashboard categories' });
+
+    console.error('Dashboard categories error:', error);
+    return res.status(500).json({ error: 'Failed to fetch categories' });
+
   }
 };
 
-export const getDashboardRepasses = async (req: AuthenticatedRequest, res: Response) => {
+
+
+export const getDashboardPaymentMethods = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
 
     const studioId = req.studio?.id;
     const { period = 'monthly' } = req.query;
 
-    const repasses = await getDashboardRepassesService({
+    const data = await getDashboardPaymentMethodsService({
       studioId: String(studioId),
       period: String(period),
     });
 
-    return res.status(200).json(repasses);
+    return res.json(data);
 
   } catch (error) {
-    console.error('Error fetching dashboard repasses:', error);
-    return res.status(500).json({ error: 'Failed to fetch dashboard repasses' });
+
+    console.error('Dashboard payment methods error:', error);
+    return res.status(500).json({ error: 'Failed to fetch payment methods' });
+
+  }
+};
+
+
+
+export const getDashboardEmployees = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+
+    const studioId = req.studio?.id;
+    const { period = 'monthly' } = req.query;
+
+    const data = await getDashboardEmployeesService({
+      studioId: String(studioId),
+      period: String(period),
+    });
+
+    return res.json(data);
+
+  } catch (error) {
+
+    console.error('Dashboard employees error:', error);
+    return res.status(500).json({ error: 'Failed to fetch employees data' });
+
+  }
+};
+
+
+
+export const getDashboardRecentTransactions = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+
+    const studioId = req.studio?.id;
+    const { limit = 10 } = req.query;
+
+    const data = await getDashboardRecentTransactionsService({
+      studioId: String(studioId),
+      limit: Number(limit),
+    });
+
+    return res.json(data);
+
+  } catch (error) {
+
+    console.error('Dashboard recent transactions error:', error);
+    return res.status(500).json({ error: 'Failed to fetch recent transactions' });
+
   }
 };

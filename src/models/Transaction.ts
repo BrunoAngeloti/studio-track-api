@@ -14,7 +14,7 @@ type TransactionAttributes = {
   customer_id?: number;
 
   responsible_employee_id?: number;
-  repasse_employee_id?: number;
+  repasse_employee_id?: number | null;
   repasse_percentage?: number;
 
   payment_method?: string;
@@ -50,7 +50,7 @@ export class Transaction
   declare customer_id?: number;
 
   declare responsible_employee_id?: number;
-  declare repasse_employee_id?: number;
+  declare repasse_employee_id?: number | null;
   declare repasse_percentage?: number;
 
   declare payment_method?: string;
