@@ -1,14 +1,35 @@
-import { Op } from 'sequelize';
-import { Transaction } from '../models/Transaction';
-import { Category } from '../models/Category';
-import { Employee } from '../models/Employee';
-import { Customer } from '../models/Customer';
-import { getDateRangeByPeriod } from '../utils/dateFilters';
+import { Op } from 'sequelize'
+import { Transaction } from '../models/Transaction'
+import { Category } from '../models/Category'
+import { Employee } from '../models/Employee'
+import { Customer } from '../models/Customer'
+import { getDateRangeByPeriod } from '../utils/dateFilters'
 
-type PeriodParams = {
-  studioId: string;
-  period: string;
-};
+type DashboardParams = {
+  studioId: string
+  period?: string
+  startDate?: Date
+  endDate?: Date
+}
+
+const resolveDateRange = ({
+  period,
+  startDate,
+  endDate,
+}: {
+  period?: string
+  startDate?: Date
+  endDate?: Date
+}) => {
+
+  if (startDate && endDate) {
+    return { startDate, endDate }
+  }
+
+  return getDateRangeByPeriod(period || 'monthly')
+}
+
+
 
 
 
@@ -23,50 +44,52 @@ type PeriodParams = {
 export const getDashboardSummaryService = async ({
   studioId,
   period,
-}: PeriodParams) => {
+  startDate,
+  endDate,
+}: DashboardParams) => {
 
-  const { startDate, endDate } = getDateRangeByPeriod(period);
+  const range = resolveDateRange({ period, startDate, endDate })
 
   const transactions = await Transaction.findAll({
     where: {
       studio_id: studioId,
       date: {
-        [Op.between]: [startDate, endDate],
+        [Op.between]: [range.startDate, range.endDate],
       },
     },
-  });
+  })
 
-  let income = 0;
-  let expense = 0;
-  let repasseTotal = 0;
+  let income = 0
+  let expense = 0
+  let repasseTotal = 0
 
   transactions.forEach((transaction) => {
 
-    const amount = Number(transaction.amount);
+    const amount = Number(transaction.amount)
 
     if (transaction.type === 'INCOME') {
 
-      income += amount;
+      income += amount
 
       if (transaction.repasse_percentage) {
 
         const repasseValue =
-          amount * (Number(transaction.repasse_percentage) / 100);
+          amount * (Number(transaction.repasse_percentage) / 100)
 
-        repasseTotal += repasseValue;
+        repasseTotal += repasseValue
 
       }
 
     }
 
     if (transaction.type === 'EXPENSE') {
-      expense += amount;
+      expense += amount
     }
 
-  });
+  })
 
-  const balance = income - expense;
-  const ownerNet = balance - repasseTotal;
+  const balance = income - expense
+  const ownerNet = balance - repasseTotal
 
   return {
     income,
@@ -74,11 +97,13 @@ export const getDashboardSummaryService = async ({
     balance,
     repasse_total: repasseTotal,
     owner_net: ownerNet,
-    startDate,
-    endDate,
-  };
+    startDate: range.startDate,
+    endDate: range.endDate,
+  }
 
-};
+}
+
+
 
 
 
@@ -93,29 +118,31 @@ export const getDashboardSummaryService = async ({
 export const getDashboardCashflowService = async ({
   studioId,
   period,
-}: PeriodParams) => {
+  startDate,
+  endDate,
+}: DashboardParams) => {
 
-  const { startDate, endDate } = getDateRangeByPeriod(period);
+  const range = resolveDateRange({ period, startDate, endDate })
 
   const transactions = await Transaction.findAll({
     where: {
       studio_id: studioId,
       date: {
-        [Op.between]: [startDate, endDate],
+        [Op.between]: [range.startDate, range.endDate],
       },
     },
     order: [['date', 'ASC']],
-  });
+  })
 
   const grouped = new Map<
     string,
     { label: string; income: number; expense: number; balance: number }
-  >();
+  >()
 
   transactions.forEach((transaction) => {
 
-    const date = new Date(transaction.date as Date);
-    const label = date.toISOString().split('T')[0];
+    const date = new Date(transaction.date as Date)
+    const label = date.toISOString().split('T')[0]
 
     if (!grouped.has(label)) {
 
@@ -124,28 +151,25 @@ export const getDashboardCashflowService = async ({
         income: 0,
         expense: 0,
         balance: 0,
-      });
+      })
 
     }
 
-    const current = grouped.get(label)!;
-    const amount = Number(transaction.amount);
+    const current = grouped.get(label)!
+    const amount = Number(transaction.amount)
 
-    if (transaction.type === 'INCOME') {
-      current.income += amount;
-    }
+    if (transaction.type === 'INCOME') current.income += amount
+    if (transaction.type === 'EXPENSE') current.expense += amount
 
-    if (transaction.type === 'EXPENSE') {
-      current.expense += amount;
-    }
+    current.balance = current.income - current.expense
 
-    current.balance = current.income - current.expense;
+  })
 
-  });
+  return Array.from(grouped.values())
 
-  return Array.from(grouped.values());
+}
 
-};
+
 
 
 
@@ -160,24 +184,22 @@ export const getDashboardCashflowService = async ({
 export const getDashboardTransactionsByCategoryService = async ({
   studioId,
   period,
+  startDate,
+  endDate,
   type,
-}: {
-  studioId: string;
-  period: string;
-  type?: string;
-}) => {
+}: DashboardParams & { type?: string }) => {
 
-  const { startDate, endDate } = getDateRangeByPeriod(period);
+  const range = resolveDateRange({ period, startDate, endDate })
 
   const whereClause: any = {
     studio_id: studioId,
     date: {
-      [Op.between]: [startDate, endDate],
+      [Op.between]: [range.startDate, range.endDate],
     },
-  };
+  }
 
   if (type) {
-    whereClause.type = type;
+    whereClause.type = type
   }
 
   const transactions = await Transaction.findAll({
@@ -189,14 +211,14 @@ export const getDashboardTransactionsByCategoryService = async ({
         attributes: ['id', 'name', 'color'],
       },
     ],
-  });
+  })
 
-  const grouped = new Map<string, any>();
+  const grouped = new Map<string, any>()
 
   transactions.forEach((transaction: any) => {
 
-    const name = transaction.category?.name || 'Sem categoria';
-    const color = transaction.category?.color || null;
+    const name = transaction.category?.name || 'Sem categoria'
+    const color = transaction.category?.color || null
 
     if (!grouped.has(name)) {
 
@@ -204,17 +226,19 @@ export const getDashboardTransactionsByCategoryService = async ({
         category: name,
         color,
         total: 0,
-      });
+      })
 
     }
 
-    grouped.get(name).total += Number(transaction.amount);
+    grouped.get(name).total += Number(transaction.amount)
 
-  });
+  })
 
-  return Array.from(grouped.values());
+  return Array.from(grouped.values())
 
-};
+}
+
+
 
 
 
@@ -229,43 +253,47 @@ export const getDashboardTransactionsByCategoryService = async ({
 export const getDashboardPaymentMethodsService = async ({
   studioId,
   period,
-}: PeriodParams) => {
+  startDate,
+  endDate,
+}: DashboardParams) => {
 
-  const { startDate, endDate } = getDateRangeByPeriod(period);
+  const range = resolveDateRange({ period, startDate, endDate })
 
   const transactions = await Transaction.findAll({
     where: {
       studio_id: studioId,
       type: 'INCOME',
       date: {
-        [Op.between]: [startDate, endDate],
+        [Op.between]: [range.startDate, range.endDate],
       },
     },
-  });
+  })
 
-  const grouped = new Map<string, number>();
+  const grouped = new Map<string, number>()
 
   transactions.forEach((transaction) => {
 
-    const method = transaction.payment_method || 'Unknown';
+    const method = transaction.payment_method || 'Unknown'
 
     if (!grouped.has(method)) {
-      grouped.set(method, 0);
+      grouped.set(method, 0)
     }
 
     grouped.set(
       method,
       grouped.get(method)! + Number(transaction.amount)
-    );
+    )
 
-  });
+  })
 
   return Array.from(grouped.entries()).map(([payment_method, total]) => ({
     payment_method,
     total,
-  }));
+  }))
 
-};
+}
+
+
 
 
 
@@ -273,26 +301,25 @@ export const getDashboardPaymentMethodsService = async ({
 
 /*
 |--------------------------------------------------------------------------
-| DASHBOARD EMPLOYEES (REPASSES)
+| DASHBOARD EMPLOYEES
 |--------------------------------------------------------------------------
 */
 
 export const getDashboardEmployeesService = async ({
   studioId,
   period,
-}: {
-  studioId: string
-  period: string
-}) => {
+  startDate,
+  endDate,
+}: DashboardParams) => {
 
-  const { startDate, endDate } = getDateRangeByPeriod(period)
+  const range = resolveDateRange({ period, startDate, endDate })
 
   const transactions = await Transaction.findAll({
     where: {
       studio_id: studioId,
       type: 'INCOME',
       date: {
-        [Op.between]: [startDate, endDate],
+        [Op.between]: [range.startDate, range.endDate],
       },
     },
     include: [
@@ -315,10 +342,6 @@ export const getDashboardEmployeesService = async ({
 
     const amount = Number(transaction.amount)
 
-    /*
-    RESPONSIBLE EMPLOYEE (gerou receita)
-    */
-
     const responsible = transaction.responsible_employee
 
     if (responsible) {
@@ -338,10 +361,6 @@ export const getDashboardEmployeesService = async ({
       employees.get(responsible.id).income_generated += amount
 
     }
-
-    /*
-    REPASSE EMPLOYEE (recebe comissão)
-    */
 
     const repasseEmployee = transaction.repasse_employee
 
@@ -369,7 +388,10 @@ export const getDashboardEmployeesService = async ({
   })
 
   return Array.from(employees.values())
+
 }
+
+
 
 
 
@@ -384,15 +406,27 @@ export const getDashboardEmployeesService = async ({
 export const getDashboardRecentTransactionsService = async ({
   studioId,
   limit,
+  startDate,
+  endDate,
 }: {
-  studioId: string;
-  limit: number;
+  studioId: string
+  limit: number
+  startDate?: Date
+  endDate?: Date
 }) => {
 
+  const whereClause: any = {
+    studio_id: studioId,
+  }
+
+  if (startDate && endDate) {
+    whereClause.date = {
+      [Op.between]: [startDate, endDate],
+    }
+  }
+
   const transactions = await Transaction.findAll({
-    where: {
-      studio_id: studioId,
-    },
+    where: whereClause,
     include: [
       {
         model: Category,
@@ -407,7 +441,7 @@ export const getDashboardRecentTransactionsService = async ({
     ],
     order: [['date', 'DESC']],
     limit,
-  });
+  })
 
   return transactions.map((transaction: any) => ({
     id: transaction.id,
@@ -417,6 +451,6 @@ export const getDashboardRecentTransactionsService = async ({
     category: transaction.category?.name || null,
     customer: transaction.customer?.name || null,
     payment_method: transaction.payment_method || null,
-  }));
+  }))
 
-};
+}

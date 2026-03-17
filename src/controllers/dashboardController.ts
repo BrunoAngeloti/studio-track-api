@@ -9,19 +9,22 @@ import {
   getDashboardEmployeesService,
   getDashboardRecentTransactionsService,
 } from '../services/dashboardService';
+import { parseDate } from '../utils/string';
 
 export const getDashboardSummary = async (
   req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
-
     const studioId = req.studio?.id;
-    const { period = 'monthly' } = req.query;
+
+    const { period = 'monthly', start_date, end_date } = req.query;
 
     const data = await getDashboardSummaryService({
       studioId: String(studioId),
       period: String(period),
+      startDate: parseDate(start_date),
+      endDate: parseDate(end_date),
     });
 
     return res.json(data);
@@ -43,11 +46,13 @@ export const getDashboardCashflow = async (
   try {
 
     const studioId = req.studio?.id;
-    const { period = 'monthly' } = req.query;
+    const { period = 'monthly', start_date, end_date } = req.query;
 
     const data = await getDashboardCashflowService({
       studioId: String(studioId),
       period: String(period),
+      startDate: parseDate(start_date),
+      endDate: parseDate(end_date),
     });
 
     return res.json(data);
@@ -69,12 +74,15 @@ export const getDashboardCategories = async (
   try {
 
     const studioId = req.studio?.id;
-    const { period = 'monthly', type } = req.query;
+
+    const { period = 'monthly', start_date, end_date, type } = req.query;
 
     const data = await getDashboardTransactionsByCategoryService({
       studioId: String(studioId),
       period: String(period),
       type: type ? String(type) : undefined,
+      startDate: parseDate(start_date),
+      endDate: parseDate(end_date),
     });
 
     return res.json(data);
@@ -96,11 +104,14 @@ export const getDashboardPaymentMethods = async (
   try {
 
     const studioId = req.studio?.id;
-    const { period = 'monthly' } = req.query;
+
+    const { period = 'monthly', start_date, end_date } = req.query;
 
     const data = await getDashboardPaymentMethodsService({
       studioId: String(studioId),
       period: String(period),
+      startDate: parseDate(start_date),
+      endDate: parseDate(end_date),
     });
 
     return res.json(data);
@@ -122,11 +133,14 @@ export const getDashboardEmployees = async (
   try {
 
     const studioId = req.studio?.id;
-    const { period = 'monthly' } = req.query;
+
+    const { period = 'monthly', start_date, end_date } = req.query;
 
     const data = await getDashboardEmployeesService({
       studioId: String(studioId),
       period: String(period),
+      startDate: parseDate(start_date),
+      endDate: parseDate(end_date),
     });
 
     return res.json(data);
@@ -148,11 +162,14 @@ export const getDashboardRecentTransactions = async (
   try {
 
     const studioId = req.studio?.id;
-    const { limit = 10 } = req.query;
+
+    const { limit = 10, start_date, end_date } = req.query;
 
     const data = await getDashboardRecentTransactionsService({
       studioId: String(studioId),
       limit: Number(limit),
+      startDate: parseDate(start_date),
+      endDate: parseDate(end_date),
     });
 
     return res.json(data);
