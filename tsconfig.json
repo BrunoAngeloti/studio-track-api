@@ -6,7 +6,6 @@
   "noEmit": false,
     "target": "es2019",
     "moduleResolution": "node",
-    "types": ["node"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true
