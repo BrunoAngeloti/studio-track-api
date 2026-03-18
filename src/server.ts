@@ -49,6 +49,10 @@ app.use('/api', dashboardRoutes);
 app.use('/api', customersRoutes);
 app.use('/api', employeesRoutes);
 
+app.get("/health", (req, res) => {
+  res.status(200).send("ok");
+});
+
 sequelize.sync().then(() => {
   app.listen(3000, () => {
     console.log('Server is running on port 3000');
