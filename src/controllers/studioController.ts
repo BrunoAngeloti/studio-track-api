@@ -44,7 +44,11 @@ export const getStudios = (req: AuthenticatedRequest, res: Response) => {
         return res.status(404).json({ error: 'Studio not found' });
       }
 
-      res.status(200).json({ studio });
+      res.status(200).json({ studio: {
+        id: studio.id,
+        name: studio.name,
+        email: studio.email
+      }});
 
     })
     .catch((error) => {
@@ -98,7 +102,11 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
     .then((studio) => {
 
       if (studio) {
-        res.status(200).json({ studio });
+        res.status(200).json({ studio: {
+          id: studio.id,
+          name: studio.name,
+          email: studio.email
+        } });
       }
 
     })
