@@ -22,7 +22,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: "http://localhost:3001",
+  origin: "https://studio-track.vercel.app",
   credentials: true
 }));
 app.use(express.json());
