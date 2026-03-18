@@ -27,7 +27,15 @@ app.use(cors({
 }));
 app.use(express.json());
 
-const sequelize = new Sequelize(config as any);
+const sequelize = new Sequelize(process.env.DATABASE_URL as string, {
+  dialect: 'postgres',
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
+});
 
 Studio.initModel(sequelize);
 Category.initModel(sequelize);

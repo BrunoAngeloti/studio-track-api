@@ -1,10 +1,12 @@
 const config = {
   dialect: 'postgres',
-  username: 'postgres',
-  password: 'postgres',
-  database: 'studiotrack',
-  host: '127.0.0.1',
-  port: 5432,
+  url: process.env.DATABASE_URL,
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
   define: {
     timestamps: true,
     underscored: true,
