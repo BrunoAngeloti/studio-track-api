@@ -4,18 +4,18 @@ import config from './config/database.js';
 import dotenv from 'dotenv';
 import cors from "cors"
 
-import studioRoutes from './routes/studioRoutes.ts';
-import categoryRoutes from './routes/categoriesRoutes.ts';
-import transactionsRoutes from './routes/transactionsRoutes.ts';
-import dashboardRoutes from './routes/dashboardRoutes.ts';
-import customersRoutes from './routes/customerRoutes.ts';
-import employeesRoutes from './routes/employeesRoutes.ts';
+import studioRoutes from './routes/studioRoutes';
+import categoryRoutes from './routes/categoriesRoutes';
+import transactionsRoutes from './routes/transactionsRoutes';
+import dashboardRoutes from './routes/dashboardRoutes';
+import customersRoutes from './routes/customerRoutes';
+import employeesRoutes from './routes/employeesRoutes';
 
-import { Studio } from './models/Studio.ts';
-import { Category } from './models/Category.ts';
-import { Transaction } from './models/Transaction.ts';
-import { Customer } from './models/Customer.ts';
-import { Employee } from './models/Employee.ts';
+import { Studio } from './models/Studio';
+import { Category } from './models/Category';
+import { Transaction } from './models/Transaction';
+import { Customer } from './models/Customer';
+import { Employee } from './models/Employee';
 
 
 dotenv.config();

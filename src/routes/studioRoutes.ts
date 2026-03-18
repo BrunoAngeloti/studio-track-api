@@ -7,9 +7,9 @@ import {
   updateStudio,
   deleteStudio,
   loginStudio
-} from '../controllers/studioController.ts';
+} from '../controllers/studioController';
 
-import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
 

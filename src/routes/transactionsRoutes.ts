@@ -5,9 +5,9 @@ import {
   getTransactionById,
   updateTransaction,
   deleteTransaction,
-} from '../controllers/transactionsController.ts';
+} from '../controllers/transactionsController';
 
-import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
 

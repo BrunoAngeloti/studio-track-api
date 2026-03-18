@@ -9,9 +9,9 @@ import {
   archiveCustomer,
   unarchiveCustomer,
 
-} from '../controllers/customerController.ts';
+} from '../controllers/customerController';
 
-import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
 

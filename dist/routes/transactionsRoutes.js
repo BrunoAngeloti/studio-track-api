@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const transactionsController_1 = require("../controllers/transactionsController");
+const authMiddleware_1 = require("../middlewares/authMiddleware");
+const router = (0, express_1.Router)();
+router.post('/transactions', authMiddleware_1.authMiddleware, transactionsController_1.createTransaction);
+router.get('/transactions', authMiddleware_1.authMiddleware, transactionsController_1.getTransactions);
+router.get('/transactions/:id', authMiddleware_1.authMiddleware, transactionsController_1.getTransactionById);
+router.put('/transactions/:id', authMiddleware_1.authMiddleware, transactionsController_1.updateTransaction);
+router.delete('/transactions/:id', authMiddleware_1.authMiddleware, transactionsController_1.deleteTransaction);
+exports.default = router;

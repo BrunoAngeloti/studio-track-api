@@ -5,9 +5,9 @@ import {
   getCategoryById,
   updateCategory,
   deleteCategory
-} from '../controllers/categoriesController.ts';
+} from '../controllers/categoriesController';
 
-import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
 

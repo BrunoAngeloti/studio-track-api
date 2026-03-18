@@ -6,9 +6,9 @@ import {
   getDashboardPaymentMethods,
   getDashboardEmployees,
   getDashboardRecentTransactions,
-} from '../controllers/dashboardController.ts';
+} from '../controllers/dashboardController';
 
-import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
 

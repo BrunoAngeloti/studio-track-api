@@ -6,9 +6,9 @@ import {
   updateEmployee,
   deleteEmployee,
   activateEmployee
-} from '../controllers/employeesController.ts';
+} from '../controllers/employeesController';
 
-import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
 
