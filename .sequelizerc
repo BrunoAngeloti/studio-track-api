@@ -1,7 +1,10 @@
+require('ts-node/register');
+require('dotenv').config();
+
 const { resolve } = require('node:path');
 
 module.exports = {
-  'config': resolve(__dirname, 'src', 'config', 'database.ts'),
+  config: resolve(__dirname, 'src', 'config', 'database.ts'),
   'migrations-path': resolve(__dirname, 'src', 'database', 'migrations'),
   'models-path': resolve(__dirname, 'src', 'models'),
 };

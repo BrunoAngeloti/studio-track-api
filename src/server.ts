@@ -1,6 +1,5 @@
 import express from 'express';
 import { Sequelize } from 'sequelize';
-import config from './config/database.js';
 import dotenv from 'dotenv';
 import cors from "cors"
 
@@ -10,12 +9,16 @@ import transactionsRoutes from './routes/transactionsRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import customersRoutes from './routes/customerRoutes';
 import employeesRoutes from './routes/employeesRoutes';
+import servicesRoutes from './routes/serviceRoutes.js';
+import additionalServicesRoutes from './routes/additionalServiceRoutes.js';
 
 import { Studio } from './models/Studio';
 import { Category } from './models/Category';
 import { Transaction } from './models/Transaction';
 import { Customer } from './models/Customer';
 import { Employee } from './models/Employee';
+import { Service } from './models/Service.js';
+import { AdditionalService } from './models/AdditionalService.js';
 
 
 dotenv.config();
@@ -42,12 +45,16 @@ Category.initModel(sequelize);
 Transaction.initModel(sequelize);
 Customer.initModel(sequelize);
 Employee.initModel(sequelize);
+Service.initModel(sequelize);
+AdditionalService.initModel(sequelize);
 
 Studio.associate();
 Category.associate();
 Transaction.associate();
 Customer.associate();
 Employee.associate();
+Service.associate();
+AdditionalService.associate();
 
 
 app.use('/api', studioRoutes);
@@ -56,6 +63,8 @@ app.use('/api', transactionsRoutes);
 app.use('/api', dashboardRoutes);
 app.use('/api', customersRoutes);
 app.use('/api', employeesRoutes);
+app.use('/api', servicesRoutes);
+app.use('/api', additionalServicesRoutes);
 
 app.get("/health", (req, res) => {
   res.status(200).send("ok");
