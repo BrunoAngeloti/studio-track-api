@@ -6,6 +6,7 @@ type AdditionalServiceAttributes = {
   studio_id: string;
   name: string;
   price: number;
+  description: string;
   archived: boolean;
 };
 
@@ -24,6 +25,7 @@ export class AdditionalService
   declare id: number;
   declare studio_id: string;
   declare name: string;
+  declare description: string;
   declare price: number;
   declare archived: boolean;
 
@@ -49,6 +51,11 @@ export class AdditionalService
         price: {
           type: DataTypes.DECIMAL(10, 2),
           allowNull: false,
+        },
+
+        description: {
+          type: DataTypes.TEXT,
+          allowNull: true,
         },
 
         archived: {

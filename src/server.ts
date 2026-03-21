@@ -11,6 +11,7 @@ import customersRoutes from './routes/customerRoutes';
 import employeesRoutes from './routes/employeesRoutes';
 import servicesRoutes from './routes/serviceRoutes.js';
 import additionalServicesRoutes from './routes/additionalServiceRoutes.js';
+import repasseConfigRoutes from './routes/repasseConfigRoutes.js';
 
 import { Studio } from './models/Studio';
 import { Category } from './models/Category';
@@ -19,6 +20,7 @@ import { Customer } from './models/Customer';
 import { Employee } from './models/Employee';
 import { Service } from './models/Service.js';
 import { AdditionalService } from './models/AdditionalService.js';
+import { RepasseConfig } from './models/RepasseConfig';
 
 
 dotenv.config();
@@ -47,6 +49,7 @@ Customer.initModel(sequelize);
 Employee.initModel(sequelize);
 Service.initModel(sequelize);
 AdditionalService.initModel(sequelize);
+RepasseConfig.initModel(sequelize);
 
 Studio.associate();
 Category.associate();
@@ -55,6 +58,7 @@ Customer.associate();
 Employee.associate();
 Service.associate();
 AdditionalService.associate();
+RepasseConfig.associate();
 
 
 app.use('/api', studioRoutes);
@@ -65,6 +69,7 @@ app.use('/api', customersRoutes);
 app.use('/api', employeesRoutes);
 app.use('/api', servicesRoutes);
 app.use('/api', additionalServicesRoutes);
+app.use('/api', repasseConfigRoutes);
 
 app.get("/health", (req, res) => {
   res.status(200).send("ok");

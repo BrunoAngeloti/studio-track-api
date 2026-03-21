@@ -10,12 +10,13 @@ export const createAdditionalService = (req: AuthenticatedRequest, res: Response
     return res.status(400).json({ error: 'Studio ID is required' });
   }
 
-  const { name, price } = req.body;
+  const { name, price, description } = req.body;
 
   AdditionalService.create({
     studio_id,
     name,
     price,
+    description,
     archived: false,
   })
     .then((additionalService) => {
@@ -214,7 +215,7 @@ export const updateAdditionalService = (req: AuthenticatedRequest, res: Response
   const id = req.params.id;
   const studio_id = req.studio?.id;
 
-  const { name, price } = req.body;
+  const { name, price, description } = req.body;
 
   AdditionalService.findOne({
     where: { id, studio_id },
@@ -229,6 +230,7 @@ export const updateAdditionalService = (req: AuthenticatedRequest, res: Response
       return additionalService.update({
         name,
         price,
+        description
       });
 
     })
