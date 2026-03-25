@@ -1,16 +1,13 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { WeeklyAvailability } from '../models/WeeklyAvailability';
-
-function getStudioIdFromRequest(req: Request) {
-  return (req as any).user?.studio_id as string | undefined;
-}
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
 export const createWeeklyAvailability = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({
@@ -65,11 +62,11 @@ export const createWeeklyAvailability = async (
 };
 
 export const getWeeklyAvailabilities = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({
@@ -77,11 +74,7 @@ export const getWeeklyAvailabilities = async (
       });
     }
 
-    const { page = '1', limit = '10', weekday } = req.query;
-
-    const pageNumber = Math.max(Number(page) || 1, 1);
-    const limitNumber = Math.max(Number(limit) || 10, 1);
-    const offset = (pageNumber - 1) * limitNumber;
+    const { weekday } = req.query;
 
     const where: any = {
       studio_id,
@@ -99,25 +92,17 @@ export const getWeeklyAvailabilities = async (
       where.weekday = weekdayNumber;
     }
 
-    const { count, rows } = await WeeklyAvailability.findAndCountAll({
+    const rows = await WeeklyAvailability.findAll({
       where,
       order: [
         ['weekday', 'ASC'],
         ['time', 'ASC'],
         ['created_at', 'DESC'],
       ],
-      limit: limitNumber,
-      offset,
     });
 
     return res.status(200).json({
       data: rows,
-      pagination: {
-        total: count,
-        page: pageNumber,
-        limit: limitNumber,
-        total_pages: Math.ceil(count / limitNumber),
-      },
     });
   } catch (error) {
     console.error('getWeeklyAvailabilities error:', error);
@@ -128,11 +113,11 @@ export const getWeeklyAvailabilities = async (
 };
 
 export const updateWeeklyAvailability = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({
@@ -200,11 +185,11 @@ export const updateWeeklyAvailability = async (
 };
 
 export const deleteWeeklyAvailability = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({

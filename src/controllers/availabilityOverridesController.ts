@@ -1,16 +1,14 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { AvailabilityOverride } from '../models/AvailabilityOverride';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
-function getStudioIdFromRequest(req: Request) {
-  return (req as any).user?.studio_id as string | undefined;
-}
 
 export const createAvailabilityOverride = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({
@@ -77,11 +75,11 @@ export const createAvailabilityOverride = async (
 };
 
 export const getAvailabilityOverrides = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({
@@ -136,11 +134,11 @@ export const getAvailabilityOverrides = async (
 };
 
 export const updateAvailabilityOverride = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({
@@ -218,11 +216,11 @@ export const updateAvailabilityOverride = async (
 };
 
 export const deleteAvailabilityOverride = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({
