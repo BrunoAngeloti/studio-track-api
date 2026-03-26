@@ -1,22 +1,26 @@
 import { AdditionalService } from '../models/AdditionalService';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { Op } from 'sequelize';
 
-export const createAdditionalService = (req: AuthenticatedRequest, res: Response) => {
-
+export const createAdditionalService = (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   const studio_id = req.studio?.id;
+
   if (!studio_id) {
     return res.status(400).json({ error: 'Studio ID is required' });
   }
 
-  const { name, price, description } = req.body;
+  const { name, price, description, estimated_time } = req.body;
 
   AdditionalService.create({
     studio_id,
     name,
     price,
     description,
+    estimated_time,
     archived: false,
   })
     .then((additionalService) => {
@@ -32,8 +36,10 @@ export const createAdditionalService = (req: AuthenticatedRequest, res: Response
     });
 };
 
-export const getAdditionalServices = async (req: AuthenticatedRequest, res: Response) => {
-
+export const getAdditionalServices = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   const studio_id = req.studio?.id;
 
   const {
@@ -56,7 +62,6 @@ export const getAdditionalServices = async (req: AuthenticatedRequest, res: Resp
   }
 
   try {
-
     const { rows, count } = await AdditionalService.findAndCountAll({
       where,
       limit: Number(limit),
@@ -73,25 +78,73 @@ export const getAdditionalServices = async (req: AuthenticatedRequest, res: Resp
         pages: Math.ceil(count / Number(limit)),
       },
     });
-
   } catch (error) {
-
     console.error('Error fetching additional services:', error);
 
     res.status(500).json({
       error: 'Failed to fetch additional services',
     });
-
   }
-
 };
 
-export const getArchivedAdditionalServices = async (req: AuthenticatedRequest, res: Response) => {
+export const getPublicAdditionalServices = async (
+  req: Request,
+  res: Response
+) => {
+  const { studio_id } = req.params;
 
+  const {
+    search = '',
+    page = 1,
+    limit = 20,
+  } = req.query;
+
+  const offset = (Number(page) - 1) * Number(limit);
+
+  const where: any = {
+    studio_id,
+    archived: false,
+  };
+
+  if (search) {
+    where.name = {
+      [Op.iLike]: `%${search}%`,
+    };
+  }
+
+  try {
+    const { rows, count } = await AdditionalService.findAndCountAll({
+      where,
+      limit: Number(limit),
+      offset,
+      order: [['name', 'ASC']],
+    });
+
+    res.status(200).json({
+      data: rows,
+      pagination: {
+        total: count,
+        page: Number(page),
+        limit: Number(limit),
+        pages: Math.ceil(count / Number(limit)),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching public additional services:', error);
+
+    res.status(500).json({
+      error: 'Failed to fetch additional services',
+    });
+  }
+};
+
+export const getArchivedAdditionalServices = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   const studio_id = req.studio?.id;
 
   try {
-
     const additionalServices = await AdditionalService.findAll({
       where: {
         studio_id,
@@ -101,26 +154,23 @@ export const getArchivedAdditionalServices = async (req: AuthenticatedRequest, r
     });
 
     res.status(200).json(additionalServices);
-
   } catch (error) {
-
     console.error('Error fetching archived additional services:', error);
 
     res.status(500).json({
       error: 'Failed to fetch archived additional services',
     });
-
   }
-
 };
 
-export const archiveAdditionalService = async (req: AuthenticatedRequest, res: Response) => {
-
+export const archiveAdditionalService = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   const id = req.params.id;
   const studio_id = req.studio?.id;
 
   try {
-
     const additionalService = await AdditionalService.findOne({
       where: { id, studio_id },
     });
@@ -136,26 +186,23 @@ export const archiveAdditionalService = async (req: AuthenticatedRequest, res: R
     res.status(200).json({
       message: 'Additional service archived',
     });
-
   } catch (error) {
-
     console.error('Error archiving additional service:', error);
 
     res.status(500).json({
       error: 'Failed to archive additional service',
     });
-
   }
-
 };
 
-export const unarchiveAdditionalService = async (req: AuthenticatedRequest, res: Response) => {
-
+export const unarchiveAdditionalService = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   const id = req.params.id;
   const studio_id = req.studio?.id;
 
   try {
-
     const additionalService = await AdditionalService.findOne({
       where: { id, studio_id },
     });
@@ -171,21 +218,19 @@ export const unarchiveAdditionalService = async (req: AuthenticatedRequest, res:
     res.status(200).json({
       message: 'Additional service restored',
     });
-
   } catch (error) {
-
     console.error('Error restoring additional service:', error);
 
     res.status(500).json({
       error: 'Failed to restore additional service',
     });
-
   }
-
 };
 
-export const getAdditionalServiceById = (req: AuthenticatedRequest, res: Response) => {
-
+export const getAdditionalServiceById = (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   const id = req.params.id;
   const studio_id = req.studio?.id;
 
@@ -196,13 +241,11 @@ export const getAdditionalServiceById = (req: AuthenticatedRequest, res: Respons
     },
   })
     .then((additionalService) => {
-
       if (!additionalService) {
         return res.status(404).json({ error: 'Additional service not found' });
       }
 
       res.status(200).json({ additionalService });
-
     })
     .catch((error) => {
       console.error('Error fetching additional service:', error);
@@ -210,18 +253,48 @@ export const getAdditionalServiceById = (req: AuthenticatedRequest, res: Respons
     });
 };
 
-export const updateAdditionalService = (req: AuthenticatedRequest, res: Response) => {
+export const getPublicAdditionalServiceById = async (
+  req: Request,
+  res: Response
+) => {
+  const { studio_id, id } = req.params;
 
+  try {
+    const additionalService = await AdditionalService.findOne({
+      where: {
+        id,
+        studio_id,
+        archived: false,
+      },
+    });
+
+    if (!additionalService) {
+      return res.status(404).json({ error: 'Additional service not found' });
+    }
+
+    res.status(200).json({ additionalService });
+  } catch (error) {
+    console.error('Error fetching public additional service:', error);
+
+    res.status(500).json({
+      error: 'Failed to fetch additional service',
+    });
+  }
+};
+
+export const updateAdditionalService = (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   const id = req.params.id;
   const studio_id = req.studio?.id;
 
-  const { name, price, description } = req.body;
+  const { name, price, description, estimated_time } = req.body;
 
   AdditionalService.findOne({
     where: { id, studio_id },
   })
     .then((additionalService) => {
-
       if (!additionalService) {
         res.status(404).json({ error: 'Additional service not found' });
         return;
@@ -230,33 +303,31 @@ export const updateAdditionalService = (req: AuthenticatedRequest, res: Response
       return additionalService.update({
         name,
         price,
-        description
+        description,
+        estimated_time,
       });
-
     })
     .then((updated) => {
-
       if (!updated) return;
 
       res.status(200).json({
         additionalService: updated,
       });
-
     })
     .catch((error) => {
-
       console.error('Error updating additional service:', error);
 
       res.status(400).json({
         error: error?.message ?? 'Failed to update additional service',
         details: error?.errors?.map((e: any) => e.message),
       });
-
     });
 };
 
-export const deleteAdditionalService = (req: AuthenticatedRequest, res: Response) => {
-
+export const deleteAdditionalService = (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   const id = req.params.id;
   const studio_id = req.studio?.id;
 
@@ -264,31 +335,25 @@ export const deleteAdditionalService = (req: AuthenticatedRequest, res: Response
     where: { id, studio_id },
   })
     .then((additionalService) => {
-
       if (!additionalService) {
         res.status(404).json({ error: 'Additional service not found' });
         return;
       }
 
       return additionalService.destroy();
-
     })
     .then((deleted) => {
-
       if (!deleted) return;
 
       res.status(200).json({
         message: 'Additional service deleted successfully',
       });
-
     })
     .catch((error) => {
-
       console.error('Error deleting additional service:', error);
 
       res.status(500).json({
         error: 'Failed to delete additional service',
       });
-
     });
 };

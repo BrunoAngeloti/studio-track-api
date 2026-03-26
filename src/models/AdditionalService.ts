@@ -7,12 +7,13 @@ type AdditionalServiceAttributes = {
   name: string;
   price: number;
   description: string;
+  estimated_time?: number;
   archived: boolean;
 };
 
 type AdditionalServiceCreationAttributes = Optional<
   AdditionalServiceAttributes,
-  'id'
+  'id' | 'estimated_time'
 >;
 
 export class AdditionalService
@@ -27,6 +28,7 @@ export class AdditionalService
   declare name: string;
   declare description: string;
   declare price: number;
+  declare estimated_time?: number;
   declare archived: boolean;
 
   static initModel(sequelize: Sequelize): typeof AdditionalService {
@@ -55,6 +57,11 @@ export class AdditionalService
 
         description: {
           type: DataTypes.TEXT,
+          allowNull: true,
+        },
+
+        estimated_time: {
+          type: DataTypes.INTEGER,
           allowNull: true,
         },
 
