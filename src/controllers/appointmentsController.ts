@@ -634,64 +634,85 @@ export const getMonthlyAvailability = async (req: Request, res: Response) => {
       });
     }
 
-    const [year, monthNumber] = String(month).split('-').map(Number);
+    const [year, monthNumber] = month.split('-').map(Number);
+
+    if (!year || !monthNumber || monthNumber < 1 || monthNumber > 12) {
+      return res.status(400).json({
+        message: 'month must be in YYYY-MM format',
+      });
+    }
 
     const daysInMonth = new Date(year, monthNumber, 0).getDate();
 
-    const result = [];
+    const result = await Promise.all(
+      Array.from({ length: daysInMonth }, async (_, index) => {
+        const day = index + 1;
+        const date = new Date(year, monthNumber - 1, day);
+        const formattedDate = date.toISOString().split('T')[0];
+        const weekday = date.getDay();
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, monthNumber - 1, day);
-      const formattedDate = date.toISOString().split('T')[0];
-
-      const weekday = date.getDay();
-
-      // pega base semanal
-      const weekly = await WeeklyAvailability.findOne({
-        where: {
-          studio_id,
-          weekday,
-          is_active: true,
-        },
-      });
-
-      if (!weekly) {
-        result.push({
-          date: formattedDate,
-          has_availability: false,
+        // Busca TODOS os horários semanais ativos daquele dia da semana
+        const weeklyAvailabilities = await WeeklyAvailability.findAll({
+          where: {
+            studio_id,
+            weekday,
+            is_active: true,
+          },
         });
-        continue;
-      }
 
-      // verifica override de bloqueio total
-      const blocked = await AvailabilityOverride.findOne({
-        where: {
-          studio_id,
-          date: formattedDate,
-          type: 'BLOCK_DAY',
-        },
-      });
-
-      if (blocked) {
-        result.push({
-          date: formattedDate,
-          has_availability: false,
+        const overrides = await AvailabilityOverride.findAll({
+          where: {
+            studio_id,
+            date: formattedDate,
+          },
         });
-        continue;
-      }
 
-      // se chegou aqui, assume que tem disponibilidade
-      result.push({
-        date: formattedDate,
-        has_availability: true,
-      });
-    }
+        const hasBlockDay = overrides.some(
+          (override) => override.type === 'BLOCK_DAY'
+        );
+
+        // Se tiver BLOCK_DAY, a base semanal zera
+        let availableTimes = hasBlockDay
+          ? []
+          : weeklyAvailabilities.map((item) => item.time); 
+
+        const removeTimes = overrides
+          .filter((override) => override.type === 'REMOVE' && override.time)
+          .map((override) => override.time);
+
+        const addTimes = overrides
+          .filter(
+            (override): override is typeof override & { time: string } =>
+              override.type === 'ADD' && !!override.time
+          )
+          .map((override) => override.time);
+
+        // Remove horários bloqueados pontualmente
+        availableTimes = availableTimes.filter(
+          (time) => !removeTimes.includes(time)
+        );
+
+        // Adiciona horários extras
+        availableTimes = [...availableTimes, ...addTimes];
+
+        // Remove duplicados
+        const uniqueAvailableTimes = [...new Set(availableTimes)];
+
+        return {
+          date: formattedDate,
+          has_availability: uniqueAvailableTimes.length > 0,
+          times: uniqueAvailableTimes,
+        };
+      })
+    );
 
     return res.json({
       month,
       days: result,
     });
   } catch (error) {
+    console.error(error);
+
     return res.status(500).json({
       message: 'Error fetching monthly availability',
     });

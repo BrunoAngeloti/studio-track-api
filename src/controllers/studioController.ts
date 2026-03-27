@@ -1,23 +1,45 @@
 import { Studio } from '../models/Studio';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { generateUniqueStudioUsername } from '../utils/generateStudioUsername';
 
-export const createStudio = (req: AuthenticatedRequest, res: Response) => {
-  const { name, email, password } = req.body;
+export const createStudio = async (req: Request, res: Response) => {
+  const {
+    name,
+    email,
+    password,
+    phone,
+    primary_color,
+    secondary_color,
+  } = req.body;
 
   const hashedPassword = bcrypt.hashSync(password, 10);
+  const username = await generateUniqueStudioUsername(name);
 
   const userToCreate = {
     name,
+    username,
     email,
     password: hashedPassword,
+    phone,
+    primary_color,
+    secondary_color,
   };
 
   Studio.create(userToCreate)
     .then((studio) => {
-      res.status(201).json({ studio });
+      res.status(201).json({
+        studio: {
+          id: studio.id,
+          name: studio.name,
+          email: studio.email,
+          phone: studio.phone,
+          primary_color: studio.primary_color,
+          secondary_color: studio.secondary_color,
+        },
+      });
     })
     .catch((error) => {
       console.error('Error creating studio:', error);
@@ -34,22 +56,24 @@ export const createStudio = (req: AuthenticatedRequest, res: Response) => {
 };
 
 export const getStudios = (req: AuthenticatedRequest, res: Response) => {
-
   const studioId = req.studio?.id;
 
   Studio.findByPk(studioId)
     .then((studio) => {
-
       if (!studio) {
         return res.status(404).json({ error: 'Studio not found' });
       }
 
-      res.status(200).json({ studio: {
-        id: studio.id,
-        name: studio.name,
-        email: studio.email
-      }});
-
+      res.status(200).json({
+        studio: {
+          id: studio.id,
+          name: studio.name,
+          email: studio.email,
+          phone: studio.phone,
+          primary_color: studio.primary_color,
+          secondary_color: studio.secondary_color,
+        },
+      });
     })
     .catch((error) => {
       console.error('Error fetching studio:', error);
@@ -57,19 +81,44 @@ export const getStudios = (req: AuthenticatedRequest, res: Response) => {
     });
 };
 
-export const getStudioById = (req: AuthenticatedRequest, res: Response) => {
+export const getPublicStudioByUsername = (req: Request, res: Response) => {
+  const username = req.params.username;
 
+  Studio.findOne({
+    where: { username },
+  })
+    .then((studio) => {
+      if (!studio) {
+        return res.status(404).json({ error: 'Studio not found' });
+      }
+
+      res.status(200).json({
+        studio: {
+          id: studio.id,
+          username: studio.username,
+          name: studio.name,
+          phone: studio.phone,
+          primary_color: studio.primary_color,
+          secondary_color: studio.secondary_color,
+        },
+      });
+    })
+    .catch((error) => {
+      console.error('Error fetching public studio:', error);
+      res.status(500).json({ error: 'Failed to fetch studio' });
+    });
+};
+
+export const getStudioById = (req: AuthenticatedRequest, res: Response) => {
   const studioId = req.studio?.id;
 
   Studio.findByPk(studioId)
     .then((studio) => {
-
       if (!studio) {
         return res.status(404).json({ error: 'Studio not found' });
       }
 
       res.status(200).json({ studio });
-
     })
     .catch((error) => {
       console.error('Error fetching studio:', error);
@@ -78,37 +127,48 @@ export const getStudioById = (req: AuthenticatedRequest, res: Response) => {
 };
 
 export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
-
   const studioId = req.studio?.id;
 
   Studio.findByPk(studioId)
     .then((studio) => {
-
       if (!studio) {
         res.status(404).json({ error: 'Studio not found' });
         return;
       }
 
-      const { name, email, password } = req.body;
+      const {
+        name,
+        email,
+        password,
+        phone,
+        primary_color,
+        secondary_color,
+      } = req.body;
 
       const updatedStudio = {
         name,
         email,
+        phone,
+        primary_color,
+        secondary_color,
         password: password ? bcrypt.hashSync(password, 10) : studio.password,
       };
 
       return studio.update(updatedStudio);
     })
     .then((studio) => {
-
       if (studio) {
-        res.status(200).json({ studio: {
-          id: studio.id,
-          name: studio.name,
-          email: studio.email
-        } });
+        res.status(200).json({
+          studio: {
+            id: studio.id,
+            name: studio.name,
+            email: studio.email,
+            phone: studio.phone,
+            primary_color: studio.primary_color,
+            secondary_color: studio.secondary_color,
+          },
+        });
       }
-
     })
     .catch((error) => {
       console.error('Error updating studio:', error);
@@ -117,7 +177,6 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
 };
 
 export const deleteStudio = (req: AuthenticatedRequest, res: Response) => {
-
   const studioId = req.studio?.id;
 
   Studio.destroy({
@@ -126,7 +185,6 @@ export const deleteStudio = (req: AuthenticatedRequest, res: Response) => {
     },
   })
     .then((deleted) => {
-
       if (deleted) {
         res.status(200).json({
           message: `Studio deleted successfully`,
@@ -134,7 +192,6 @@ export const deleteStudio = (req: AuthenticatedRequest, res: Response) => {
       } else {
         res.status(404).json({ error: 'Studio not found' });
       }
-
     })
     .catch((error) => {
       console.error('Error deleting studio:', error);
@@ -142,13 +199,11 @@ export const deleteStudio = (req: AuthenticatedRequest, res: Response) => {
     });
 };
 
-export const loginStudio = (req: AuthenticatedRequest, res: Response) => {
-
+export const loginStudio = (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   Studio.findOne({ where: { email } })
     .then((studio) => {
-
       if (!studio) {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
@@ -178,6 +233,9 @@ export const loginStudio = (req: AuthenticatedRequest, res: Response) => {
           id: studio.id,
           name: studio.name,
           email: studio.email,
+          phone: studio.phone,
+          primary_color: studio.primary_color,
+          secondary_color: studio.secondary_color,
         },
       });
     })
