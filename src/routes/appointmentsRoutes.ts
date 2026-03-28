@@ -7,7 +7,6 @@ import {
   deleteAppointment,
   approveAppointment,
   rejectAppointment,
-  getPublicAvailableSlots,
   getMonthlyAvailability
 } from '../controllers/appointmentsController';
 
@@ -19,7 +18,6 @@ const router = Router();
  * 🔓 ROTAS PÚBLICAS (sem auth)
  */
 router.post('/appointments', createAppointment);
-router.get('/public/availability', getPublicAvailableSlots);
 router.get('/public/availability/month', getMonthlyAvailability);
 
 /**

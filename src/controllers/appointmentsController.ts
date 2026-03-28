@@ -522,102 +522,6 @@ export const rejectAppointment = async (req: Request, res: Response) => {
   }
 };
 
-export const getPublicAvailableSlots = async (req: Request, res: Response) => {
-  try {
-    const { studio_id, date } = req.query;
-
-    if (!studio_id || !date) {
-      return res.status(400).json({
-        message: 'studio_id and date are required',
-      });
-    }
-
-    const selectedDate = new Date(String(date));
-
-    if (Number.isNaN(selectedDate.getTime())) {
-      return res.status(400).json({
-        message: 'Invalid date',
-      });
-    }
-
-    const weekday = selectedDate.getDay(); // 0=domingo ... 6=sábado
-
-    const weeklySlots = await WeeklyAvailability.findAll({
-      where: {
-        studio_id: String(studio_id),
-        weekday,
-        is_active: true,
-      },
-      attributes: ['time'],
-      order: [['time', 'ASC']],
-    });
-
-    const overrides = await AvailabilityOverride.findAll({
-      where: {
-        studio_id: String(studio_id),
-        date: String(date),
-      },
-      attributes: ['type', 'time'],
-    });
-
-    const blockedDay = overrides.some(
-      (override) => override.type === 'BLOCK_DAY'
-    );
-
-    if (blockedDay) {
-      return res.status(200).json({
-        date,
-        available_slots: [],
-      });
-    }
-
-    let slots = weeklySlots.map((slot) => slot.time);
-
-    const addTimes = overrides
-      .filter((override) => override.type === 'ADD' && override.time)
-      .map((override) => override.time as string);
-
-    const removeTimes = overrides
-      .filter((override) => override.type === 'REMOVE' && override.time)
-      .map((override) => override.time as string);
-
-    slots = [...slots, ...addTimes];
-
-    slots = slots.filter((time, index, arr) => arr.indexOf(time) === index);
-
-    slots = slots.filter((time) => !removeTimes.includes(time));
-
-    const bookedAppointments = await Appointment.findAll({
-      where: {
-        studio_id: String(studio_id),
-        scheduled_date: String(date),
-        status: {
-          [Op.in]: ['PENDING', 'APPROVED'],
-        },
-      },
-      attributes: ['scheduled_time'],
-    });
-
-    const bookedTimes = bookedAppointments.map(
-      (appointment) => appointment.scheduled_time
-    );
-
-    const availableSlots = slots
-      .filter((time) => !bookedTimes.includes(time))
-      .sort((a, b) => a.localeCompare(b));
-
-    return res.status(200).json({
-      date,
-      available_slots: availableSlots,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      message: 'Error fetching available slots',
-    });
-  }
-};
-
 export const getMonthlyAvailability = async (req: Request, res: Response) => {
   try {
     const { studio_id, month } = req.query;
@@ -644,67 +548,132 @@ export const getMonthlyAvailability = async (req: Request, res: Response) => {
 
     const daysInMonth = new Date(year, monthNumber, 0).getDate();
 
-    const result = await Promise.all(
-      Array.from({ length: daysInMonth }, async (_, index) => {
-        const day = index + 1;
-        const date = new Date(year, monthNumber - 1, day);
-        const formattedDate = date.toISOString().split('T')[0];
-        const weekday = date.getDay();
+    const monthDates = Array.from({ length: daysInMonth }, (_, index) => {
+      const day = index + 1;
+      const date = new Date(year, monthNumber - 1, day);
+      const formattedDate = date.toISOString().split('T')[0];
+      const weekday = date.getDay();
 
-        // Busca TODOS os horários semanais ativos daquele dia da semana
-        const weeklyAvailabilities = await WeeklyAvailability.findAll({
+      return {
+        day,
+        date,
+        formattedDate,
+        weekday,
+      };
+    });
+
+    const startDate = `${month}-01`;
+    const endDate = `${month}-${String(daysInMonth).padStart(2, '0')}`;
+
+    const [weeklyAvailabilities, overrides, bookedAppointments] =
+      await Promise.all([
+        WeeklyAvailability.findAll({
           where: {
             studio_id,
-            weekday,
             is_active: true,
           },
-        });
+          attributes: ['weekday', 'time'],
+          order: [['time', 'ASC']],
+        }),
 
-        const overrides = await AvailabilityOverride.findAll({
+        AvailabilityOverride.findAll({
           where: {
             studio_id,
-            date: formattedDate,
+            date: {
+              [Op.between]: [startDate, endDate],
+            },
           },
-        });
+          attributes: ['date', 'type', 'time'],
+        }),
 
-        const hasBlockDay = overrides.some(
-          (override) => override.type === 'BLOCK_DAY'
-        );
+        Appointment.findAll({
+          where: {
+            studio_id,
+            scheduled_date: {
+              [Op.between]: [startDate, endDate],
+            },
+            status: {
+              [Op.in]: ['PENDING', 'APPROVED'],
+            },
+          },
+          attributes: ['scheduled_date', 'scheduled_time'],
+        }),
+      ]);
 
-        // Se tiver BLOCK_DAY, a base semanal zera
-        let availableTimes = hasBlockDay
-          ? []
-          : weeklyAvailabilities.map((item) => item.time); 
+    const weeklyMap = new Map<number, string[]>();
+    for (const item of weeklyAvailabilities) {
+      const weekday = item.weekday;
+      const time = item.time;
 
-        const removeTimes = overrides
-          .filter((override) => override.type === 'REMOVE' && override.time)
-          .map((override) => override.time);
+      if (!weeklyMap.has(weekday)) {
+        weeklyMap.set(weekday, []);
+      }
 
-        const addTimes = overrides
-          .filter(
-            (override): override is typeof override & { time: string } =>
-              override.type === 'ADD' && !!override.time
-          )
-          .map((override) => override.time);
+      weeklyMap.get(weekday)!.push(time);
+    }
 
-        // Remove horários bloqueados pontualmente
-        availableTimes = availableTimes.filter(
-          (time) => !removeTimes.includes(time)
-        );
+    const overridesMap = new Map<string, typeof overrides>();
+    for (const override of overrides) {
+      const date = override.date;
 
-        // Adiciona horários extras
-        availableTimes = [...availableTimes, ...addTimes];
+      if (!overridesMap.has(date)) {
+        overridesMap.set(date, []);
+      }
 
-        // Remove duplicados
-        const uniqueAvailableTimes = [...new Set(availableTimes)];
+      overridesMap.get(date)!.push(override);
+    }
 
-        return {
-          date: formattedDate,
-          has_availability: uniqueAvailableTimes.length > 0,
-          times: uniqueAvailableTimes,
-        };
-      })
-    );
+    const bookedMap = new Map<string, string[]>();
+    for (const appointment of bookedAppointments) {
+      const date = appointment.scheduled_date;
+      const time = appointment.scheduled_time;
+
+      if (!bookedMap.has(date)) {
+        bookedMap.set(date, []);
+      }
+
+      bookedMap.get(date)!.push(time);
+    }
+
+    const result = monthDates.map(({ formattedDate, weekday }) => {
+      const baseTimes = weeklyMap.get(weekday) ?? [];
+      const dayOverrides = overridesMap.get(formattedDate) ?? [];
+      const bookedTimes = bookedMap.get(formattedDate) ?? [];
+
+      const hasBlockDay = dayOverrides.some(
+        (override) => override.type === 'BLOCK_DAY'
+      );
+
+      let availableTimes = hasBlockDay ? [] : [...baseTimes];
+
+      const removeTimes = dayOverrides
+        .filter((override) => override.type === 'REMOVE' && override.time)
+        .map((override) => override.time as string);
+
+      const addTimes = dayOverrides
+        .filter((override) => override.type === 'ADD' && override.time)
+        .map((override) => override.time as string);
+
+      availableTimes = availableTimes.filter(
+        (time) => !removeTimes.includes(time)
+      );
+
+      availableTimes = [...availableTimes, ...addTimes];
+
+      const uniqueAvailableTimes = [...new Set(availableTimes)].sort((a, b) =>
+        a.localeCompare(b)
+      );
+
+      const realAvailableTimes = uniqueAvailableTimes.filter(
+        (time) => !bookedTimes.includes(time)
+      );
+
+      return {
+        date: formattedDate,
+        has_availability: realAvailableTimes.length > 0,
+        times: realAvailableTimes,
+      };
+    });
 
     return res.json({
       month,
