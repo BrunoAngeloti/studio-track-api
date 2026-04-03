@@ -1,5 +1,7 @@
 import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
 import { Studio } from './Studio';
+import { Appointment } from './Appointment';
+import { AppointmentAdditionalService } from './AppointmentAdditionalService';
 
 type AdditionalServiceAttributes = {
   id: number;
@@ -85,6 +87,12 @@ export class AdditionalService
     AdditionalService.belongsTo(Studio, {
       foreignKey: 'studio_id',
       as: 'studio',
+    });
+    AdditionalService.belongsToMany(Appointment, {
+      through: AppointmentAdditionalService,
+      foreignKey: 'additional_service_id',
+      otherKey: 'appointment_id',
+      as: 'appointments',
     });
   }
 }

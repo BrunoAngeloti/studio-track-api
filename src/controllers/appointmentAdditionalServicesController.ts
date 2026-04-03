@@ -1,26 +1,21 @@
 import { Request, Response } from 'express';
 import { Appointment } from '../models/Appointment';
 import { AdditionalService } from '../models/AdditionalService';
-
-function getStudioIdFromRequest(req: Request) {
-  return (req as any).user?.studio_id as string | undefined;
-}
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
 export const addAdditionalServiceToAppointment = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const { appointment_id } = req.params;
+    const { additional_service_id, studio_id } = req.body;
 
     if (!studio_id) {
       return res.status(401).json({
         message: 'Unauthorized',
       });
     }
-
-    const { appointment_id } = req.params;
-    const { additional_service_id } = req.body;
 
     if (!appointment_id || !additional_service_id) {
       return res.status(400).json({
@@ -102,11 +97,11 @@ export const addAdditionalServiceToAppointment = async (
 };
 
 export const removeAdditionalServiceFromAppointment = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({

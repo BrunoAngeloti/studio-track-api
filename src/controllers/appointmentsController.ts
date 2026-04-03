@@ -1,16 +1,13 @@
 import { Request, Response } from 'express';
-import { Op } from 'sequelize';
+import { Op, Sequelize } from 'sequelize';
 import { WeeklyAvailability } from '../models/WeeklyAvailability';
 import { AvailabilityOverride } from '../models/AvailabilityOverride';
 import { Appointment } from '../models/Appointment';
 import { Customer } from '../models/Customer';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
 function normalizePhone(phone: string) {
   return phone.replace(/\D/g, '');
-}
-
-function getStudioIdFromRequest(req: Request) {
-  return (req as any).user?.studio_id as string | undefined;
 }
 
 export const createAppointment = async (req: Request, res: Response) => {
@@ -40,24 +37,6 @@ export const createAppointment = async (req: Request, res: Response) => {
       });
     }
 
-    const requester_phone_normalized = normalizePhone(requester_phone);
-
-    let resolvedCustomerId: number | null = customer_id ?? null;
-
-    if (!resolvedCustomerId) {
-      const customer = await Customer.findOne({
-        where: {
-          studio_id,
-          // ajuste aqui se no seu model o nome for phone_normalized
-          normalized_phone: requester_phone_normalized,
-        } as any,
-      });
-
-      if (customer) {
-        resolvedCustomerId = customer.id;
-      }
-    }
-
     const existingAppointment = await Appointment.findOne({
       where: {
         studio_id,
@@ -73,6 +52,39 @@ export const createAppointment = async (req: Request, res: Response) => {
       return res.status(409).json({
         message: 'This time slot is no longer available',
       });
+    }
+
+    const requester_phone_normalized = normalizePhone(requester_phone);
+
+    let resolvedCustomerId: number | null = customer_id ?? null;
+
+    if (!resolvedCustomerId) {
+      let customer = await Customer.findOne({
+        where: {
+          studio_id,
+          [Op.and]: Sequelize.where(
+            Sequelize.fn(
+              'regexp_replace',
+              Sequelize.col('phone'),
+              '\\D',
+              '',
+              'g'
+            ),
+            requester_phone_normalized
+          ),
+        },
+      });
+
+      if (!customer) {
+        customer = await Customer.create({
+          studio_id,
+          name: requester_name,
+          phone: requester_phone,
+          archived: false,
+        });
+      }
+
+      resolvedCustomerId = customer.id;
     }
 
     const appointment = await Appointment.create({
@@ -99,9 +111,9 @@ export const createAppointment = async (req: Request, res: Response) => {
   }
 };
 
-export const getAppointments = async (req: Request, res: Response) => {
+export const getAppointments = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({
@@ -196,9 +208,9 @@ export const getAppointments = async (req: Request, res: Response) => {
   }
 };
 
-export const getAppointmentById = async (req: Request, res: Response) => {
+export const getAppointmentById = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({
@@ -237,9 +249,9 @@ export const getAppointmentById = async (req: Request, res: Response) => {
   }
 };
 
-export const updateAppointment = async (req: Request, res: Response) => {
+export const updateAppointment = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({
@@ -327,9 +339,9 @@ export const updateAppointment = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteAppointment = async (req: Request, res: Response) => {
+export const deleteAppointment = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({
@@ -365,9 +377,9 @@ export const deleteAppointment = async (req: Request, res: Response) => {
   }
 };
 
-export const approveAppointment = async (req: Request, res: Response) => {
+export const approveAppointment = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({
@@ -430,9 +442,17 @@ export const approveAppointment = async (req: Request, res: Response) => {
       let customer = await Customer.findOne({
         where: {
           studio_id,
-          // ajuste aqui se no seu model o nome for phone_normalized
-          normalized_phone: appointment.requester_phone_normalized,
-        } as any,
+          [Op.and]: Sequelize.where(
+            Sequelize.fn(
+              'regexp_replace',
+              Sequelize.col('phone'),
+              '\\D',
+              '',
+              'g'
+            ),
+            appointment.requester_phone_normalized
+          ),
+        },
       });
 
       if (!customer) {
@@ -440,8 +460,6 @@ export const approveAppointment = async (req: Request, res: Response) => {
           studio_id,
           name: appointment.requester_name,
           phone: appointment.requester_phone,
-          // ajuste aqui se no seu model o nome for phone_normalized
-          normalized_phone: appointment.requester_phone_normalized,
         } as any);
       }
 
@@ -465,9 +483,9 @@ export const approveAppointment = async (req: Request, res: Response) => {
   }
 };
 
-export const rejectAppointment = async (req: Request, res: Response) => {
+export const rejectAppointment = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const studio_id = getStudioIdFromRequest(req);
+    const studio_id = req.studio?.id;
 
     if (!studio_id) {
       return res.status(401).json({

@@ -4,6 +4,7 @@ import { Customer } from './Customer';
 import { Service } from './Service';
 import { AdditionalService } from './AdditionalService';
 import { Employee } from './Employee';
+import { AppointmentAdditionalService } from './AppointmentAdditionalService';
 
 type AppointmentStatus =
   | 'PENDING'
@@ -229,7 +230,7 @@ export class Appointment
     });
 
     Appointment.belongsToMany(AdditionalService, {
-      through: 'appointment_additional_services',
+      through: AppointmentAdditionalService,
       foreignKey: 'appointment_id',
       otherKey: 'additional_service_id',
       as: 'additional_services',

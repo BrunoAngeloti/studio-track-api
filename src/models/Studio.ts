@@ -8,6 +8,7 @@ type StudioAttributes = {
   password: string;
   username?: string;
   phone?: string;
+  instagram?: string;
   primary_color?: string;
   secondary_color?: string;
   created_at?: Date;
@@ -39,6 +40,7 @@ export class Studio
   declare secondary_color?: string;
   declare created_at?: Date;
   declare updated_at?: Date;
+  declare instagram?: string;
 
   static initModel(sequelize: Sequelize): typeof Studio {
     return Studio.init(
@@ -73,6 +75,11 @@ export class Studio
         },
 
         phone: {
+          type: DataTypes.STRING,
+          allowNull: true,
+        },
+
+        instagram: {
           type: DataTypes.STRING,
           allowNull: true,
         },

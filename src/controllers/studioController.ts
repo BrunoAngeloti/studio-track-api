@@ -13,6 +13,7 @@ export const createStudio = async (req: Request, res: Response) => {
     phone,
     primary_color,
     secondary_color,
+    instagram,
   } = req.body;
 
   const hashedPassword = bcrypt.hashSync(password, 10);
@@ -26,6 +27,7 @@ export const createStudio = async (req: Request, res: Response) => {
     phone,
     primary_color,
     secondary_color,
+    instagram,
   };
 
   Studio.create(userToCreate)
@@ -38,6 +40,7 @@ export const createStudio = async (req: Request, res: Response) => {
           phone: studio.phone,
           primary_color: studio.primary_color,
           secondary_color: studio.secondary_color,
+          instagram: studio.instagram,
         },
       });
     })
@@ -72,6 +75,7 @@ export const getStudios = (req: AuthenticatedRequest, res: Response) => {
           phone: studio.phone,
           primary_color: studio.primary_color,
           secondary_color: studio.secondary_color,
+          instagram: studio.instagram,
         },
       });
     })
@@ -96,6 +100,7 @@ export const getPublicStudioByUsername = (req: Request, res: Response) => {
         studio: {
           id: studio.id,
           username: studio.username,
+          instagram: studio.instagram,
           name: studio.name,
           phone: studio.phone,
           primary_color: studio.primary_color,
@@ -143,12 +148,14 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
         phone,
         primary_color,
         secondary_color,
+        instagram,
       } = req.body;
 
       const updatedStudio = {
         name,
         email,
         phone,
+        instagram,
         primary_color,
         secondary_color,
         password: password ? bcrypt.hashSync(password, 10) : studio.password,
@@ -166,6 +173,7 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
             phone: studio.phone,
             primary_color: studio.primary_color,
             secondary_color: studio.secondary_color,
+            instagram: studio.instagram,
           },
         });
       }
