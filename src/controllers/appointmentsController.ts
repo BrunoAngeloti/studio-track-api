@@ -5,6 +5,8 @@ import { AvailabilityOverride } from '../models/AvailabilityOverride';
 import { Appointment } from '../models/Appointment';
 import { Customer } from '../models/Customer';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+import { Service } from '../models/Service';
+import { AdditionalService } from '../models/AdditionalService';
 
 function normalizePhone(phone: string) {
   return phone.replace(/\D/g, '');
@@ -181,6 +183,17 @@ export const getAppointments = async (req: AuthenticatedRequest, res: Response) 
           as: 'customer',
           required: false,
         },
+        {
+          model: Service,
+          as: 'service',
+          required: false,
+        },
+        {
+          model: AdditionalService,
+          as: 'additional_services',
+          through: { attributes: [] },
+          required: false,
+        },
       ],
       order: [
         ['scheduled_date', 'DESC'],
@@ -189,6 +202,7 @@ export const getAppointments = async (req: AuthenticatedRequest, res: Response) 
       ],
       limit: limitNumber,
       offset,
+      distinct: true,
     });
 
     return res.status(200).json({
