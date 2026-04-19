@@ -17,6 +17,7 @@ export const createAppointment = async (req: Request, res: Response) => {
     const {
       studio_id,
       customer_id,
+      status,
       service_id,
       responsible_employee_id,
       scheduled_date,
@@ -99,7 +100,7 @@ export const createAppointment = async (req: Request, res: Response) => {
       requester_name,
       requester_phone,
       requester_phone_normalized,
-      status: 'PENDING',
+      status: status ?? 'PENDING',
       note: note ?? null,
       expires_at: null,
     });
