@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import { Sequelize } from 'sequelize';
-import dotenv from 'dotenv';
 import cors from "cors"
 
 import studioRoutes from './routes/studioRoutes';
@@ -30,8 +32,6 @@ import { AvailabilityOverride } from './models/AvailabilityOverride';
 import { AppointmentAdditionalService } from './models/AppointmentAdditionalService';
 import { Appointment } from './models/Appointment';
 
-
-dotenv.config();
 const app = express();
 
 app.use(cors({

@@ -7,6 +7,8 @@ import { Customer } from '../models/Customer';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { Service } from '../models/Service';
 import { AdditionalService } from '../models/AdditionalService';
+import { Studio } from '../models/Studio';
+import { sendAppointmentNotificationEmail } from '../services/emailService';
 
 function normalizePhone(phone: string) {
   return phone.replace(/\D/g, '');
@@ -104,6 +106,32 @@ export const createAppointment = async (req: Request, res: Response) => {
       note: note ?? null,
       expires_at: null,
     });
+
+    // Send email notification if appointment is pending
+    const appointmentStatus = status ?? 'PENDING';
+    if (appointmentStatus === 'PENDING') {
+      try {
+        const studio = await Studio.findByPk(studio_id);
+        const customer = resolvedCustomerId
+          ? await Customer.findByPk(resolvedCustomerId)
+          : null;
+        const appointmentService = service_id
+          ? await Service.findByPk(service_id)
+          : null;
+
+        if (studio) {
+          await sendAppointmentNotificationEmail({
+            appointment,
+            studio,
+            customer,
+            service: appointmentService,
+          });
+        }
+      } catch (emailError) {
+        console.error('Error sending appointment notification email:', emailError);
+        // Don't fail the appointment creation if email fails
+      }
+    }
 
     return res.status(201).json(appointment);
   } catch (error) {
