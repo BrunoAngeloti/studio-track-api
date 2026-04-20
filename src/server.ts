@@ -35,19 +35,19 @@ import { Appointment } from './models/Appointment';
 const app = express();
 
 app.use(cors({
-  origin: "http://localhost:3001", //"https://studio-track.vercel.app",
+  origin: "https://studio-track.vercel.app", // "http://localhost:3001",
   credentials: true
 }));
 app.use(express.json());
 
 const sequelize = new Sequelize(process.env.DATABASE_URL as string, {
   dialect: 'postgres',
-  // dialectOptions: {
-  //   ssl: {
-  //     require: true,
-  //     rejectUnauthorized: false,
-  //   },
-  // },
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
 });
 
 Studio.initModel(sequelize);
