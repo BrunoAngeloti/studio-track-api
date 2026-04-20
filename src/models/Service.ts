@@ -8,12 +8,13 @@ type ServiceAttributes = {
   name: string;
   description?: string;
   price: number;
+  estimated_time?: number;
   archived: boolean;
 };
 
 type ServiceCreationAttributes = Optional<
   ServiceAttributes,
-  'id' | 'description'
+  'id' | 'description' | 'estimated_time'
 >;
 
 export class Service
@@ -25,6 +26,7 @@ export class Service
   declare name: string;
   declare description?: string;
   declare price: number;
+  declare estimated_time?: number;
   declare archived: boolean;
 
   static initModel(sequelize: Sequelize): typeof Service {
@@ -54,6 +56,11 @@ export class Service
         price: {
           type: DataTypes.DECIMAL(10, 2),
           allowNull: false,
+        },
+
+        estimated_time: {
+          type: DataTypes.INTEGER,
+          allowNull: true,
         },
 
         archived: {

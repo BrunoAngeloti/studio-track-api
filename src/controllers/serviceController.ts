@@ -1,22 +1,22 @@
 import { Service } from '../models/Service';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { Op } from 'sequelize';
 
 export const createService = (req: AuthenticatedRequest, res: Response) => {
-
   const studio_id = req.studio?.id;
   if (!studio_id) {
     return res.status(400).json({ error: 'Studio ID is required' });
   }
 
-  const { name, description, price } = req.body;
+  const { name, description, price, estimated_time } = req.body;
 
   Service.create({
     studio_id,
     name,
     description,
     price,
+    estimated_time,
     archived: false,
   })
     .then((service) => {
@@ -215,7 +215,7 @@ export const updateService = (req: AuthenticatedRequest, res: Response) => {
   const id = req.params.id;
   const studio_id = req.studio?.id;
 
-  const { name, description, price } = req.body;
+  const { name, description, price, estimated_time } = req.body;
 
   Service.findOne({
     where: { id, studio_id },
@@ -231,6 +231,7 @@ export const updateService = (req: AuthenticatedRequest, res: Response) => {
         name,
         description,
         price,
+        estimated_time
       });
 
     })
@@ -291,4 +292,78 @@ export const deleteService = (req: AuthenticatedRequest, res: Response) => {
       });
 
     });
+};
+
+export const getPublicServices = async (req: Request, res: Response) => {
+  const { studio_id } = req.params;
+
+  const {
+    search = '',
+    page = 1,
+    limit = 20,
+  } = req.query;
+
+  const offset = (Number(page) - 1) * Number(limit);
+
+  const where: any = {
+    studio_id,
+    archived: false,
+  };
+
+  if (search) {
+    where.name = {
+      [Op.iLike]: `%${search}%`,
+    };
+  }
+
+  try {
+    const { rows, count } = await Service.findAndCountAll({
+      where,
+      limit: Number(limit),
+      offset,
+      order: [['name', 'ASC']],
+    });
+
+    res.status(200).json({
+      data: rows,
+      pagination: {
+        total: count,
+        page: Number(page),
+        limit: Number(limit),
+        pages: Math.ceil(count / Number(limit)),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching public services:', error);
+
+    res.status(500).json({
+      error: 'Failed to fetch services',
+    });
+  }
+};
+
+export const getPublicServiceById = async (req: Request, res: Response) => {
+  const { studio_id, id } = req.params;
+
+  try {
+    const service = await Service.findOne({
+      where: {
+        id,
+        studio_id,
+        archived: false,
+      },
+    });
+
+    if (!service) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    res.status(200).json({ service });
+  } catch (error) {
+    console.error('Error fetching public service:', error);
+
+    res.status(500).json({
+      error: 'Failed to fetch service',
+    });
+  }
 };

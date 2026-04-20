@@ -1,5 +1,7 @@
 import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
 import { Studio } from './Studio';
+import { Appointment } from './Appointment';
+import { AppointmentAdditionalService } from './AppointmentAdditionalService';
 
 type AdditionalServiceAttributes = {
   id: number;
@@ -7,12 +9,13 @@ type AdditionalServiceAttributes = {
   name: string;
   price: number;
   description: string;
+  estimated_time?: number;
   archived: boolean;
 };
 
 type AdditionalServiceCreationAttributes = Optional<
   AdditionalServiceAttributes,
-  'id'
+  'id' | 'estimated_time'
 >;
 
 export class AdditionalService
@@ -27,6 +30,7 @@ export class AdditionalService
   declare name: string;
   declare description: string;
   declare price: number;
+  declare estimated_time?: number;
   declare archived: boolean;
 
   static initModel(sequelize: Sequelize): typeof AdditionalService {
@@ -58,6 +62,11 @@ export class AdditionalService
           allowNull: true,
         },
 
+        estimated_time: {
+          type: DataTypes.INTEGER,
+          allowNull: true,
+        },
+
         archived: {
           type: DataTypes.BOOLEAN,
           allowNull: false,
@@ -78,6 +87,12 @@ export class AdditionalService
     AdditionalService.belongsTo(Studio, {
       foreignKey: 'studio_id',
       as: 'studio',
+    });
+    AdditionalService.belongsToMany(Appointment, {
+      through: AppointmentAdditionalService,
+      foreignKey: 'additional_service_id',
+      otherKey: 'appointment_id',
+      as: 'appointments',
     });
   }
 }

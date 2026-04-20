@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import { Sequelize } from 'sequelize';
-import dotenv from 'dotenv';
 import cors from "cors"
 
 import studioRoutes from './routes/studioRoutes';
@@ -12,6 +14,10 @@ import employeesRoutes from './routes/employeesRoutes';
 import servicesRoutes from './routes/serviceRoutes.js';
 import additionalServicesRoutes from './routes/additionalServiceRoutes.js';
 import repasseConfigRoutes from './routes/repasseConfigRoutes.js';
+import weeklyAvailabilityRoutes from './routes/weeklyAvailabilityRoutes';
+import availabilityOverrideRoutes from './routes/availabilityOverrideRoutes';
+import appointmentAdditionalServiceRoutes from './routes/appointmentAdditionalServicesRoutes';
+import appointmentRoutes from './routes/appointmentsRoutes';
 
 import { Studio } from './models/Studio';
 import { Category } from './models/Category';
@@ -21,13 +27,15 @@ import { Employee } from './models/Employee';
 import { Service } from './models/Service.js';
 import { AdditionalService } from './models/AdditionalService.js';
 import { RepasseConfig } from './models/RepasseConfig';
+import { WeeklyAvailability } from './models/WeeklyAvailability';
+import { AvailabilityOverride } from './models/AvailabilityOverride';
+import { AppointmentAdditionalService } from './models/AppointmentAdditionalService';
+import { Appointment } from './models/Appointment';
 
-
-dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: "https://studio-track.vercel.app",
+  origin: "https://studio-track.vercel.app", // "http://localhost:3001",
   credentials: true
 }));
 app.use(express.json());
@@ -50,6 +58,10 @@ Employee.initModel(sequelize);
 Service.initModel(sequelize);
 AdditionalService.initModel(sequelize);
 RepasseConfig.initModel(sequelize);
+WeeklyAvailability.initModel(sequelize) 
+AvailabilityOverride.initModel(sequelize) 
+AppointmentAdditionalService.initModel(sequelize) 
+Appointment.initModel(sequelize) 
 
 Studio.associate();
 Category.associate();
@@ -59,6 +71,9 @@ Employee.associate();
 Service.associate();
 AdditionalService.associate();
 RepasseConfig.associate();
+WeeklyAvailability.associate();
+AvailabilityOverride.associate();
+Appointment.associate();
 
 
 app.use('/api', studioRoutes);
@@ -70,6 +85,10 @@ app.use('/api', employeesRoutes);
 app.use('/api', servicesRoutes);
 app.use('/api', additionalServicesRoutes);
 app.use('/api', repasseConfigRoutes);
+app.use('/api', weeklyAvailabilityRoutes);
+app.use('/api', availabilityOverrideRoutes);
+app.use('/api', appointmentAdditionalServiceRoutes);
+app.use('/api', appointmentRoutes);
 
 app.get("/health", (req, res) => {
   res.status(200).send("ok");
