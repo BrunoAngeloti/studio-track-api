@@ -14,6 +14,7 @@ export const createStudio = async (req: Request, res: Response) => {
     primary_color,
     secondary_color,
     instagram,
+    catalog_link,
   } = req.body;
 
   const hashedPassword = bcrypt.hashSync(password, 10);
@@ -28,6 +29,7 @@ export const createStudio = async (req: Request, res: Response) => {
     primary_color,
     secondary_color,
     instagram,
+    catalog_link,
   };
 
   Studio.create(userToCreate)
@@ -41,6 +43,7 @@ export const createStudio = async (req: Request, res: Response) => {
           primary_color: studio.primary_color,
           secondary_color: studio.secondary_color,
           instagram: studio.instagram,
+          catalog_link: studio.catalog_link,
         },
       });
     })
@@ -76,6 +79,7 @@ export const getStudios = (req: AuthenticatedRequest, res: Response) => {
           primary_color: studio.primary_color,
           secondary_color: studio.secondary_color,
           instagram: studio.instagram,
+          catalog_link: studio.catalog_link,
         },
       });
     })
@@ -101,6 +105,7 @@ export const getPublicStudioByUsername = (req: Request, res: Response) => {
           id: studio.id,
           username: studio.username,
           instagram: studio.instagram,
+          catalog_link: studio.catalog_link,
           name: studio.name,
           phone: studio.phone,
           primary_color: studio.primary_color,
@@ -149,6 +154,7 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
         primary_color,
         secondary_color,
         instagram,
+        catalog_link,
       } = req.body;
 
       const updatedStudio = {
@@ -156,6 +162,7 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
         email,
         phone,
         instagram,
+        catalog_link,
         primary_color,
         secondary_color,
         password: password ? bcrypt.hashSync(password, 10) : studio.password,
@@ -174,6 +181,7 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
             primary_color: studio.primary_color,
             secondary_color: studio.secondary_color,
             instagram: studio.instagram,
+            catalog_link: studio.catalog_link,
           },
         });
       }

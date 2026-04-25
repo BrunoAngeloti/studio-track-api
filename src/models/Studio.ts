@@ -9,6 +9,7 @@ type StudioAttributes = {
   username?: string;
   phone?: string;
   instagram?: string;
+  catalog_link?: string;
   primary_color?: string;
   secondary_color?: string;
   created_at?: Date;
@@ -20,6 +21,8 @@ type StudioCreationAttributes = Optional<
   | 'id'
   | 'username'
   | 'phone'
+  | 'instagram'
+  | 'catalog_link'
   | 'primary_color'
   | 'secondary_color'
   | 'created_at'
@@ -41,6 +44,7 @@ export class Studio
   declare created_at?: Date;
   declare updated_at?: Date;
   declare instagram?: string;
+  declare catalog_link?: string;
 
   static initModel(sequelize: Sequelize): typeof Studio {
     return Studio.init(
@@ -80,6 +84,11 @@ export class Studio
         },
 
         instagram: {
+          type: DataTypes.STRING,
+          allowNull: true,
+        },
+
+        catalog_link: {
           type: DataTypes.STRING,
           allowNull: true,
         },
