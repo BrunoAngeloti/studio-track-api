@@ -1,4 +1,4 @@
-import { transporter } from '../config/mailer';
+import { Resend } from 'resend';
 import { Appointment } from '../models/Appointment';
 import { Studio } from '../models/Studio';
 import { Customer } from '../models/Customer';
@@ -248,23 +248,36 @@ function generateAppointmentHTML(data: AppointmentEmailData): string {
   `;
 }
 
+// Initialize Resend
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 export const sendAppointmentNotificationEmail = async (
   data: AppointmentEmailData
 ): Promise<void> => {
   try {
     const { appointment, studio } = data;
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
+    if (!process.env.RESEND_API_KEY) {
+      console.warn('⚠️ RESEND_API_KEY não configurada. Email não será enviado.');
+      return;
+    }
+
+    const response = await resend.emails.send({
+      from: 'noreply@studiotrack.com.br',
       to: studio.email,
       subject: `Nova Solicitação de Agendamento - ${studio.name}`,
       html: generateAppointmentHTML(data),
-    };
+    });
 
-    await transporter.sendMail(mailOptions);
-    console.log(`Email enviado com sucesso para ${studio.email}`);
+    if (response.error) {
+      console.warn('⚠️ Falha ao enviar email via Resend:', response.error.message);
+      console.warn('💡 Agendamento foi criado com sucesso, mas a notificação por email não pôde ser enviada.');
+    } else {
+      console.log(`✅ Email enviado com sucesso para ${studio.email} (ID: ${response.data?.id})`);
+    }
   } catch (error) {
-    console.warn('Aviso: Falha ao enviar email de notificação de agendamento. O agendamento foi criado com sucesso, mas a notificação por email não pôde ser enviada.', error instanceof Error ? error.message : String(error));
+    console.warn('⚠️ Erro ao enviar email:', error instanceof Error ? error.message : String(error));
+    console.warn('💡 Agendamento foi criado com sucesso, mas a notificação por email não pôde ser enviada.');
     // Silently fail - don't throw, just log the warning
     // The appointment was already created successfully
   }
