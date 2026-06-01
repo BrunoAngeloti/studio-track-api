@@ -262,19 +262,21 @@ export const sendAppointmentNotificationEmail = async (
       return;
     }
 
-    const response = await resend.emails.send({
-      from: 'app.studiotrack@gmail.com',
-      to: studio.email,
-      subject: `Nova Solicitação de Agendamento - ${studio.name}`,
-      html: generateAppointmentHTML(data),
-    });
+    // Email sending temporarily disabled
+    // const response = await resend.emails.send({
+    //   from: 'app.studiotrack@gmail.com',
+    //   to: studio.email,
+    //   subject: `Nova Solicitação de Agendamento - ${studio.name}`,
+    //   html: generateAppointmentHTML(data),
+    // });
 
-    if (response.error) {
-      console.warn('⚠️ Falha ao enviar email via Resend:', response.error.message);
-      console.warn('💡 Agendamento foi criado com sucesso, mas a notificação por email não pôde ser enviada.');
-    } else {
-      console.log(`✅ Email enviado com sucesso para ${studio.email} (ID: ${response.data?.id})`);
-    }
+    // if (response.error) {
+    //   console.warn('⚠️ Falha ao enviar email via Resend:', response.error.message);
+    //   console.warn('💡 Agendamento foi criado com sucesso, mas a notificação por email não pôde ser enviada.');
+    // } else {
+    //   console.log(`✅ Email enviado com sucesso para ${studio.email} (ID: ${response.data?.id})`);
+    // }
+    console.log(`📧 Email para ${studio.email} não enviado (serviço desativado temporariamente).`);
   } catch (error) {
     console.warn('⚠️ Erro ao enviar email:', error instanceof Error ? error.message : String(error));
     console.warn('💡 Agendamento foi criado com sucesso, mas a notificação por email não pôde ser enviada.');
