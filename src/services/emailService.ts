@@ -263,7 +263,7 @@ export const sendAppointmentNotificationEmail = async (
     }
 
     const response = await resend.emails.send({
-      from: 'noreply@studiotrack.com.br',
+      from: 'app.studiotrack@gmail.com',
       to: studio.email,
       subject: `Nova Solicitação de Agendamento - ${studio.name}`,
       html: generateAppointmentHTML(data),
