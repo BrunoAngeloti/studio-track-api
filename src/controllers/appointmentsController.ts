@@ -128,8 +128,8 @@ export const createAppointment = async (req: Request, res: Response) => {
           });
         }
       } catch (emailError) {
-        console.error('Error sending appointment notification email:', emailError);
-        // Don't fail the appointment creation if email fails
+        // Email sending failed, but appointment was created successfully
+        // This is logged in the emailService, no need to re-log here
       }
     }
 

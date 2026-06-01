@@ -264,7 +264,8 @@ export const sendAppointmentNotificationEmail = async (
     await transporter.sendMail(mailOptions);
     console.log(`Email enviado com sucesso para ${studio.email}`);
   } catch (error) {
-    console.error('Erro ao enviar email:', error);
-    throw error;
+    console.warn('Aviso: Falha ao enviar email de notificação de agendamento. O agendamento foi criado com sucesso, mas a notificação por email não pôde ser enviada.', error instanceof Error ? error.message : String(error));
+    // Silently fail - don't throw, just log the warning
+    // The appointment was already created successfully
   }
 };
