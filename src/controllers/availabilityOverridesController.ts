@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { Op } from 'sequelize';
 import { AvailabilityOverride } from '../models/AvailabilityOverride';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
@@ -87,7 +88,7 @@ export const getAvailabilityOverrides = async (
       });
     }
 
-    const { page = '1', limit = '10', date, type } = req.query;
+    const { page = '1', limit = '10', date, type, start_date, end_date } = req.query;
 
     const pageNumber = Math.max(Number(page) || 1, 1);
     const limitNumber = Math.max(Number(limit) || 10, 1);
@@ -99,6 +100,15 @@ export const getAvailabilityOverrides = async (
 
     if (typeof date === 'string' && date.trim()) {
       where.date = date;
+    } else if (
+      typeof start_date === 'string' && start_date.trim() &&
+      typeof end_date === 'string' && end_date.trim()
+    ) {
+      where.date = { [Op.between]: [start_date, end_date] };
+    } else if (typeof start_date === 'string' && start_date.trim()) {
+      where.date = { [Op.gte]: start_date };
+    } else if (typeof end_date === 'string' && end_date.trim()) {
+      where.date = { [Op.lte]: end_date };
     }
 
     if (typeof type === 'string' && type.trim()) {
