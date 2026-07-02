@@ -7,7 +7,8 @@ type AvailabilityOverrideType = 'ADD' | 'REMOVE' | 'BLOCK_DAY';
 type AvailabilityOverrideAttributes = {
   id: number;
   studio_id: string;
-  date: string;
+  start_date: string;
+  end_date: string;
   type: AvailabilityOverrideType;
   time?: string | null;
   reason?: string | null;
@@ -28,7 +29,8 @@ export class AvailabilityOverride
 {
   declare id: number;
   declare studio_id: string;
-  declare date: string;
+  declare start_date: string;
+  declare end_date: string;
   declare type: AvailabilityOverrideType;
   declare time?: string | null;
   declare reason?: string | null;
@@ -49,7 +51,12 @@ export class AvailabilityOverride
           allowNull: false,
         },
 
-        date: {
+        start_date: {
+          type: DataTypes.DATEONLY,
+          allowNull: false,
+        },
+
+        end_date: {
           type: DataTypes.DATEONLY,
           allowNull: false,
         },
@@ -85,13 +92,12 @@ export class AvailabilityOverride
         underscored: true,
         indexes: [
           {
-            fields: ['studio_id', 'date'],
+            name: 'availability_overrides_studio_range_idx',
+            fields: ['studio_id', 'start_date', 'end_date'],
           },
           {
-            fields: ['studio_id', 'date', 'type'],
-          },
-          {
-            fields: ['studio_id', 'employee_id', 'date'],
+            name: 'availability_overrides_employee_range_idx',
+            fields: ['studio_id', 'employee_id', 'start_date', 'end_date'],
           },
         ],
       }

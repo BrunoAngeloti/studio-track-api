@@ -4,6 +4,7 @@ import {
   getStudios,
   updateStudio,
   updateStudioType,
+  updateBookingHorizon,
   deleteStudio,
   loginStudio,
   getPublicStudioByUsername,
@@ -23,6 +24,7 @@ router.get('/public/studios/:username', getPublicStudioByUsername);
 router.get('/studios/me', authMiddleware, getStudios);
 router.put('/studios/me', authMiddleware, updateStudio);
 router.patch('/studios/me/type', authMiddleware, updateStudioType);
+router.patch('/studios/me/booking-horizon', authMiddleware, updateBookingHorizon);
 router.delete('/studios/me', authMiddleware, deleteStudio);
 
 export default router;

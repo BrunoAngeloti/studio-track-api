@@ -16,6 +16,31 @@ function normalizePhone(phone: string) {
   return phone.replace(/\D/g, '');
 }
 
+// Last calendar day a customer is allowed to book, based on the studio's
+// booking_horizon_months setting (0 = current month only, 12 = a year out).
+function getBookingHorizonLastDate(monthsAhead: number): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(today.getFullYear(), today.getMonth() + monthsAhead + 1, 0);
+}
+
+// Expands a `YYYY-MM-DD` range (inclusive) into individual date strings.
+function eachDateStringInRange(startStr: string, endStr: string): string[] {
+  const [sy, sm, sd] = startStr.split('-').map(Number);
+  const [ey, em, ed] = endStr.split('-').map(Number);
+  const start = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
+
+  const dates: string[] = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    dates.push(`${y}-${m}-${day}`);
+  }
+  return dates;
+}
+
 export const createAppointment = async (req: Request, res: Response) => {
   try {
     const {
@@ -654,6 +679,8 @@ export const getMonthlyAvailability = async (req: Request, res: Response) => {
       resolvedEmployeeId = employee.id;
     }
 
+    const lastAllowedDate = getBookingHorizonLastDate(studio.booking_horizon_months);
+
     const daysInMonth = new Date(year, monthNumber, 0).getDate();
 
     const monthDates = Array.from({ length: daysInMonth }, (_, index) => {
@@ -689,11 +716,10 @@ export const getMonthlyAvailability = async (req: Request, res: Response) => {
           where: {
             studio_id,
             employee_id: resolvedEmployeeId,
-            date: {
-              [Op.between]: [startDate, endDate],
-            },
+            start_date: { [Op.lte]: endDate },
+            end_date: { [Op.gte]: startDate },
           },
-          attributes: ['date', 'type', 'time'],
+          attributes: ['start_date', 'end_date', 'type', 'time'],
         }),
 
         Appointment.findAll({
@@ -725,13 +751,16 @@ export const getMonthlyAvailability = async (req: Request, res: Response) => {
 
     const overridesMap = new Map<string, typeof overrides>();
     for (const override of overrides) {
-      const date = override.date;
+      const clippedStart = override.start_date > startDate ? override.start_date : startDate;
+      const clippedEnd = override.end_date < endDate ? override.end_date : endDate;
 
-      if (!overridesMap.has(date)) {
-        overridesMap.set(date, []);
+      for (const dateStr of eachDateStringInRange(clippedStart, clippedEnd)) {
+        if (!overridesMap.has(dateStr)) {
+          overridesMap.set(dateStr, []);
+        }
+
+        overridesMap.get(dateStr)!.push(override);
       }
-
-      overridesMap.get(date)!.push(override);
     }
 
     const bookedMap = new Map<string, string[]>();
@@ -746,7 +775,15 @@ export const getMonthlyAvailability = async (req: Request, res: Response) => {
       bookedMap.get(date)!.push(time);
     }
 
-    const result = monthDates.map(({ formattedDate, weekday }) => {
+    const result = monthDates.map(({ date, formattedDate, weekday }) => {
+      if (date > lastAllowedDate) {
+        return {
+          date: formattedDate,
+          has_availability: false,
+          times: [],
+        };
+      }
+
       const baseTimes = weeklyMap.get(weekday) ?? [];
       const dayOverrides = overridesMap.get(formattedDate) ?? [];
       const bookedTimes = bookedMap.get(formattedDate) ?? [];

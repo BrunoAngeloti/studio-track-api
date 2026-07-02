@@ -19,11 +19,17 @@ export const createAvailabilityOverride = async (
       });
     }
 
-    const { date, type, time, reason, employee_id } = req.body;
+    const { start_date, end_date, type, time, reason, employee_id } = req.body;
 
-    if (!date || !type) {
+    if (!start_date || !end_date || !type) {
       return res.status(400).json({
-        message: 'date and type are required',
+        message: 'start_date, end_date and type are required',
+      });
+    }
+
+    if (start_date > end_date) {
+      return res.status(400).json({
+        message: 'start_date must not be after end_date',
       });
     }
 
@@ -50,7 +56,8 @@ export const createAvailabilityOverride = async (
     const existingOverride = await AvailabilityOverride.findOne({
       where: {
         studio_id,
-        date,
+        start_date,
+        end_date,
         type,
         time: time ?? null,
         employee_id: resolvedEmployeeId,
@@ -65,7 +72,8 @@ export const createAvailabilityOverride = async (
 
     const override = await AvailabilityOverride.create({
       studio_id,
-      date,
+      start_date,
+      end_date,
       type,
       time: time ?? null,
       reason: reason ?? null,
@@ -127,16 +135,20 @@ export const getAvailabilityOverrides = async (
     }
 
     if (typeof date === 'string' && date.trim()) {
-      where.date = date;
+      // overrides whose period contains this exact date
+      where.start_date = { [Op.lte]: date };
+      where.end_date = { [Op.gte]: date };
     } else if (
       typeof start_date === 'string' && start_date.trim() &&
       typeof end_date === 'string' && end_date.trim()
     ) {
-      where.date = { [Op.between]: [start_date, end_date] };
+      // overrides whose period overlaps [start_date, end_date]
+      where.start_date = { [Op.lte]: end_date };
+      where.end_date = { [Op.gte]: start_date };
     } else if (typeof start_date === 'string' && start_date.trim()) {
-      where.date = { [Op.gte]: start_date };
+      where.end_date = { [Op.gte]: start_date };
     } else if (typeof end_date === 'string' && end_date.trim()) {
-      where.date = { [Op.lte]: end_date };
+      where.start_date = { [Op.lte]: end_date };
     }
 
     if (typeof type === 'string' && type.trim()) {
@@ -146,7 +158,7 @@ export const getAvailabilityOverrides = async (
     const { count, rows } = await AvailabilityOverride.findAndCountAll({
       where,
       order: [
-        ['date', 'DESC'],
+        ['start_date', 'DESC'],
         ['time', 'ASC'],
         ['created_at', 'DESC'],
       ],
@@ -185,7 +197,7 @@ export const updateAvailabilityOverride = async (
     }
 
     const { id } = req.params;
-    const { date, type, time, reason, employee_id } = req.body;
+    const { start_date, end_date, type, time, reason, employee_id } = req.body;
 
     const override = await AvailabilityOverride.findOne({
       where: {
@@ -201,8 +213,15 @@ export const updateAvailabilityOverride = async (
     }
 
     const nextType = type ?? override.type;
-    const nextDate = date ?? override.date;
+    const nextStartDate = start_date ?? override.start_date;
+    const nextEndDate = end_date ?? override.end_date;
     const nextTime = time !== undefined ? time : override.time;
+
+    if (nextStartDate > nextEndDate) {
+      return res.status(400).json({
+        message: 'start_date must not be after end_date',
+      });
+    }
 
     if (!['ADD', 'REMOVE', 'BLOCK_DAY'].includes(nextType)) {
       return res.status(400).json({
@@ -230,7 +249,8 @@ export const updateAvailabilityOverride = async (
     const duplicateOverride = await AvailabilityOverride.findOne({
       where: {
         studio_id,
-        date: nextDate,
+        start_date: nextStartDate,
+        end_date: nextEndDate,
         type: nextType,
         time: nextTime ?? null,
         employee_id: resolvedEmployeeId,
@@ -244,7 +264,8 @@ export const updateAvailabilityOverride = async (
     }
 
     await override.update({
-      date: nextDate,
+      start_date: nextStartDate,
+      end_date: nextEndDate,
       type: nextType,
       time: nextType === 'BLOCK_DAY' ? null : nextTime,
       reason: reason !== undefined ? reason : override.reason,

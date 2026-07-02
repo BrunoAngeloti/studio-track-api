@@ -13,6 +13,7 @@ type StudioAttributes = {
   primary_color?: string;
   secondary_color?: string;
   type: 'INDIVIDUAL' | 'TEAM';
+  booking_horizon_months: number;
   created_at?: Date;
   updated_at?: Date;
 };
@@ -27,6 +28,7 @@ type StudioCreationAttributes = Optional<
   | 'primary_color'
   | 'secondary_color'
   | 'type'
+  | 'booking_horizon_months'
   | 'created_at'
   | 'updated_at'
 >;
@@ -44,6 +46,7 @@ export class Studio
   declare primary_color?: string;
   declare secondary_color?: string;
   declare type: 'INDIVIDUAL' | 'TEAM';
+  declare booking_horizon_months: number;
   declare created_at?: Date;
   declare updated_at?: Date;
   declare instagram?: string;
@@ -112,6 +115,15 @@ export class Studio
           defaultValue: 'INDIVIDUAL',
           validate: {
             isIn: [['INDIVIDUAL', 'TEAM']],
+          },
+        },
+
+        booking_horizon_months: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          defaultValue: 12,
+          validate: {
+            isIn: [[0, 1, 3, 6, 12]],
           },
         },
 

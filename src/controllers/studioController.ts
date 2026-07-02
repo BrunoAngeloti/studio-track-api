@@ -45,6 +45,7 @@ export const createStudio = async (req: Request, res: Response) => {
           instagram: studio.instagram,
           catalog_link: studio.catalog_link,
           type: studio.type,
+          booking_horizon_months: studio.booking_horizon_months,
         },
       });
     })
@@ -82,6 +83,7 @@ export const getStudios = (req: AuthenticatedRequest, res: Response) => {
           instagram: studio.instagram,
           catalog_link: studio.catalog_link,
           type: studio.type,
+          booking_horizon_months: studio.booking_horizon_months,
         },
       });
     })
@@ -113,6 +115,7 @@ export const getPublicStudioByUsername = (req: Request, res: Response) => {
           primary_color: studio.primary_color,
           secondary_color: studio.secondary_color,
           type: studio.type,
+          booking_horizon_months: studio.booking_horizon_months,
         },
       });
     })
@@ -186,6 +189,7 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
             instagram: studio.instagram,
             catalog_link: studio.catalog_link,
             type: studio.type,
+            booking_horizon_months: studio.booking_horizon_months,
           },
         });
       }
@@ -224,11 +228,53 @@ export const updateStudioType = async (req: AuthenticatedRequest, res: Response)
         instagram: studio.instagram,
         catalog_link: studio.catalog_link,
         type: studio.type,
+        booking_horizon_months: studio.booking_horizon_months,
       },
     });
   } catch (error) {
     console.error('Error updating studio type:', error);
     res.status(500).json({ error: 'Failed to update studio type' });
+  }
+};
+
+const ALLOWED_BOOKING_HORIZON_MONTHS = [0, 1, 3, 6, 12];
+
+export const updateBookingHorizon = async (req: AuthenticatedRequest, res: Response) => {
+  const studioId = req.studio?.id;
+  const { booking_horizon_months } = req.body;
+
+  if (!ALLOWED_BOOKING_HORIZON_MONTHS.includes(booking_horizon_months)) {
+    return res.status(400).json({
+      error: `booking_horizon_months must be one of: ${ALLOWED_BOOKING_HORIZON_MONTHS.join(', ')}`,
+    });
+  }
+
+  try {
+    const studio = await Studio.findByPk(studioId);
+
+    if (!studio) {
+      return res.status(404).json({ error: 'Studio not found' });
+    }
+
+    await studio.update({ booking_horizon_months });
+
+    res.status(200).json({
+      studio: {
+        id: studio.id,
+        name: studio.name,
+        email: studio.email,
+        phone: studio.phone,
+        primary_color: studio.primary_color,
+        secondary_color: studio.secondary_color,
+        instagram: studio.instagram,
+        catalog_link: studio.catalog_link,
+        type: studio.type,
+        booking_horizon_months: studio.booking_horizon_months,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating booking horizon:', error);
+    res.status(500).json({ error: 'Failed to update booking horizon' });
   }
 };
 
@@ -293,6 +339,7 @@ export const loginStudio = (req: Request, res: Response) => {
           primary_color: studio.primary_color,
           secondary_color: studio.secondary_color,
           type: studio.type,
+          booking_horizon_months: studio.booking_horizon_months,
         },
       });
     })
