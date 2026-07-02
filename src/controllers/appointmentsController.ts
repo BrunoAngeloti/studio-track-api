@@ -7,8 +7,6 @@ import { Customer } from '../models/Customer';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { Service } from '../models/Service';
 import { AdditionalService } from '../models/AdditionalService';
-import { Studio } from '../models/Studio';
-import { sendAppointmentNotificationEmail } from '../services/emailService';
 import { sendPushToStudio } from '../services/pushService';
 
 function normalizePhone(phone: string) {
@@ -117,28 +115,6 @@ export const createAppointment = async (req: Request, res: Response) => {
         body: `${requester_name} quer agendar para ${scheduled_date} às ${scheduled_time.substring(0, 5)}`,
         url: '/dashboard/appointments',
       }).catch(() => {});
-
-      try {
-        const studio = await Studio.findByPk(studio_id);
-        const customer = resolvedCustomerId
-          ? await Customer.findByPk(resolvedCustomerId)
-          : null;
-        const appointmentService = service_id
-          ? await Service.findByPk(service_id)
-          : null;
-
-        if (studio) {
-          await sendAppointmentNotificationEmail({
-            appointment,
-            studio,
-            customer,
-            service: appointmentService,
-          });
-        }
-      } catch (emailError) {
-        // Email sending failed, but appointment was created successfully
-        // This is logged in the emailService, no need to re-log here
-      }
     }
 
     return res.status(201).json(appointment);

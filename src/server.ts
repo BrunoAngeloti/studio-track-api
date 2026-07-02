@@ -36,15 +36,26 @@ import { PushSubscription } from './models/PushSubscription';
 
 const app = express();
 
+const defaultOrigins = [
+  "https://studio-track.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:3001",
+];
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
+  : defaultOrigins;
+
 app.use(cors({
-  origin: "https://studio-track.vercel.app", // "http://localhost:3001",
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());
 
+const isLocalDatabase = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || "");
+
 const sequelize = new Sequelize(process.env.DATABASE_URL as string, {
   dialect: 'postgres',
-  dialectOptions: {
+  dialectOptions: isLocalDatabase ? {} : {
     ssl: {
       require: true,
       rejectUnauthorized: false,
@@ -99,9 +110,11 @@ app.get("/health", (req, res) => {
   res.status(200).send("ok");
 });
 
+const PORT = process.env.PORT || 3000;
+
 sequelize.sync().then(() => {
-  app.listen(3000, () => {
-    console.log('Server is running on port 3000');
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
   });
 }).catch((err: any) => {
   console.error('Error syncing database:', err);
