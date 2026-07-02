@@ -5,12 +5,15 @@ import {
   getEmployeeById,
   updateEmployee,
   deleteEmployee,
-  activateEmployee
+  activateEmployee,
+  getPublicEmployees
 } from '../controllers/employeesController';
 
 import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
+
+router.get('/public/studios/:studio_id/employees', getPublicEmployees);
 
 router.post('/employees', authMiddleware, createEmployee);
 router.get('/employees', authMiddleware, getEmployees);

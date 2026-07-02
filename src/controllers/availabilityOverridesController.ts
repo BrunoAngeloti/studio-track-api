@@ -1,7 +1,9 @@
 import { Response } from 'express';
 import { Op } from 'sequelize';
 import { AvailabilityOverride } from '../models/AvailabilityOverride';
+import { Studio } from '../models/Studio';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+import { requireEmployeeIfTeam, StudioTypeValidationError } from '../utils/studioType';
 
 
 export const createAvailabilityOverride = async (
@@ -17,7 +19,7 @@ export const createAvailabilityOverride = async (
       });
     }
 
-    const { date, type, time, reason } = req.body;
+    const { date, type, time, reason, employee_id } = req.body;
 
     if (!date || !type) {
       return res.status(400).json({
@@ -43,12 +45,15 @@ export const createAvailabilityOverride = async (
       });
     }
 
+    const resolvedEmployeeId = await requireEmployeeIfTeam(studio_id, employee_id);
+
     const existingOverride = await AvailabilityOverride.findOne({
       where: {
         studio_id,
         date,
         type,
         time: time ?? null,
+        employee_id: resolvedEmployeeId,
       },
     });
 
@@ -64,10 +69,15 @@ export const createAvailabilityOverride = async (
       type,
       time: time ?? null,
       reason: reason ?? null,
+      employee_id: resolvedEmployeeId,
     });
 
     return res.status(201).json(override);
   } catch (error) {
+    if (error instanceof StudioTypeValidationError) {
+      return res.status(error.status).json({ message: error.message });
+    }
+
     console.error('createAvailabilityOverride error:', error);
     return res.status(500).json({
       message: 'Error creating availability override',
@@ -88,7 +98,13 @@ export const getAvailabilityOverrides = async (
       });
     }
 
-    const { page = '1', limit = '10', date, type, start_date, end_date } = req.query;
+    const studio = await Studio.findByPk(studio_id);
+
+    if (!studio) {
+      return res.status(404).json({ message: 'Studio not found' });
+    }
+
+    const { page = '1', limit = '10', date, type, start_date, end_date, employee_id } = req.query;
 
     const pageNumber = Math.max(Number(page) || 1, 1);
     const limitNumber = Math.max(Number(limit) || 10, 1);
@@ -97,6 +113,18 @@ export const getAvailabilityOverrides = async (
     const where: any = {
       studio_id,
     };
+
+    if (studio.type === 'TEAM') {
+      if (!employee_id) {
+        return res.status(400).json({
+          message: 'employee_id is required for TEAM studios',
+        });
+      }
+
+      where.employee_id = Number(employee_id);
+    } else {
+      where.employee_id = null;
+    }
 
     if (typeof date === 'string' && date.trim()) {
       where.date = date;
@@ -157,7 +185,7 @@ export const updateAvailabilityOverride = async (
     }
 
     const { id } = req.params;
-    const { date, type, time, reason } = req.body;
+    const { date, type, time, reason, employee_id } = req.body;
 
     const override = await AvailabilityOverride.findOne({
       where: {
@@ -194,12 +222,18 @@ export const updateAvailabilityOverride = async (
       });
     }
 
+    const resolvedEmployeeId =
+      employee_id !== undefined
+        ? await requireEmployeeIfTeam(studio_id, employee_id)
+        : override.employee_id ?? null;
+
     const duplicateOverride = await AvailabilityOverride.findOne({
       where: {
         studio_id,
         date: nextDate,
         type: nextType,
         time: nextTime ?? null,
+        employee_id: resolvedEmployeeId,
       },
     });
 
@@ -214,10 +248,15 @@ export const updateAvailabilityOverride = async (
       type: nextType,
       time: nextType === 'BLOCK_DAY' ? null : nextTime,
       reason: reason !== undefined ? reason : override.reason,
+      employee_id: resolvedEmployeeId,
     });
 
     return res.status(200).json(override);
   } catch (error) {
+    if (error instanceof StudioTypeValidationError) {
+      return res.status(error.status).json({ message: error.message });
+    }
+
     console.error('updateAvailabilityOverride error:', error);
     return res.status(500).json({
       message: 'Error updating availability override',

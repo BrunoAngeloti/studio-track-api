@@ -7,7 +7,10 @@ import { Customer } from '../models/Customer';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { Service } from '../models/Service';
 import { AdditionalService } from '../models/AdditionalService';
+import { Studio } from '../models/Studio';
+import { Employee } from '../models/Employee';
 import { sendPushToStudio } from '../services/pushService';
+import { requireEmployeeIfTeam, StudioTypeValidationError } from '../utils/studioType';
 
 function normalizePhone(phone: string) {
   return phone.replace(/\D/g, '');
@@ -41,15 +44,23 @@ export const createAppointment = async (req: Request, res: Response) => {
       });
     }
 
-    const existingAppointment = await Appointment.findOne({
-      where: {
-        studio_id,
-        scheduled_date,
-        scheduled_time,
-        status: {
-          [Op.in]: ['PENDING', 'APPROVED'],
-        },
+    const resolvedEmployeeId = await requireEmployeeIfTeam(studio_id, responsible_employee_id);
+
+    const conflictWhere: any = {
+      studio_id,
+      scheduled_date,
+      scheduled_time,
+      status: {
+        [Op.in]: ['PENDING', 'APPROVED'],
       },
+    };
+
+    if (resolvedEmployeeId !== null) {
+      conflictWhere.responsible_employee_id = resolvedEmployeeId;
+    }
+
+    const existingAppointment = await Appointment.findOne({
+      where: conflictWhere,
     });
 
     if (existingAppointment) {
@@ -95,7 +106,7 @@ export const createAppointment = async (req: Request, res: Response) => {
       studio_id,
       customer_id: resolvedCustomerId,
       service_id: service_id ?? null,
-      responsible_employee_id: responsible_employee_id ?? null,
+      responsible_employee_id: resolvedEmployeeId,
       scheduled_date,
       scheduled_time,
       requester_name,
@@ -119,6 +130,10 @@ export const createAppointment = async (req: Request, res: Response) => {
 
     return res.status(201).json(appointment);
   } catch (error) {
+    if (error instanceof StudioTypeValidationError) {
+      return res.status(error.status).json({ message: error.message });
+    }
+
     console.error('createAppointment error:', error);
     return res.status(500).json({
       message: 'Error creating appointment',
@@ -312,20 +327,31 @@ export const updateAppointment = async (req: AuthenticatedRequest, res: Response
       });
     }
 
+    const resolvedEmployeeId =
+      responsible_employee_id !== undefined
+        ? await requireEmployeeIfTeam(studio_id, responsible_employee_id)
+        : appointment.responsible_employee_id ?? null;
+
     if (scheduled_date || scheduled_time) {
       const nextDate = scheduled_date ?? appointment.scheduled_date;
       const nextTime = scheduled_time ?? appointment.scheduled_time;
 
-      const conflictingAppointment = await Appointment.findOne({
-        where: {
-          id: { [Op.ne]: appointment.id },
-          studio_id,
-          scheduled_date: nextDate,
-          scheduled_time: nextTime,
-          status: {
-            [Op.in]: ['PENDING', 'APPROVED'],
-          },
+      const conflictWhere: any = {
+        id: { [Op.ne]: appointment.id },
+        studio_id,
+        scheduled_date: nextDate,
+        scheduled_time: nextTime,
+        status: {
+          [Op.in]: ['PENDING', 'APPROVED'],
         },
+      };
+
+      if (resolvedEmployeeId !== null) {
+        conflictWhere.responsible_employee_id = resolvedEmployeeId;
+      }
+
+      const conflictingAppointment = await Appointment.findOne({
+        where: conflictWhere,
       });
 
       if (conflictingAppointment) {
@@ -344,10 +370,7 @@ export const updateAppointment = async (req: AuthenticatedRequest, res: Response
       customer_id:
         customer_id !== undefined ? customer_id : appointment.customer_id,
       service_id: service_id !== undefined ? service_id : appointment.service_id,
-      responsible_employee_id:
-        responsible_employee_id !== undefined
-          ? responsible_employee_id
-          : appointment.responsible_employee_id,
+      responsible_employee_id: resolvedEmployeeId,
       scheduled_date: scheduled_date ?? appointment.scheduled_date,
       scheduled_time: scheduled_time ?? appointment.scheduled_time,
       requester_name: requester_name ?? appointment.requester_name,
@@ -359,6 +382,10 @@ export const updateAppointment = async (req: AuthenticatedRequest, res: Response
 
     return res.status(200).json(appointment);
   } catch (error) {
+    if (error instanceof StudioTypeValidationError) {
+      return res.status(error.status).json({ message: error.message });
+    }
+
     console.error('updateAppointment error:', error);
     return res.status(500).json({
       message: 'Error updating appointment',
@@ -445,16 +472,22 @@ export const approveAppointment = async (req: AuthenticatedRequest, res: Respons
       });
     }
 
-    const conflictingAppointment = await Appointment.findOne({
-      where: {
-        id: { [Op.ne]: appointment.id },
-        studio_id,
-        scheduled_date: appointment.scheduled_date,
-        scheduled_time: appointment.scheduled_time,
-        status: {
-          [Op.in]: ['APPROVED', 'PENDING'],
-        },
+    const approveConflictWhere: any = {
+      id: { [Op.ne]: appointment.id },
+      studio_id,
+      scheduled_date: appointment.scheduled_date,
+      scheduled_time: appointment.scheduled_time,
+      status: {
+        [Op.in]: ['APPROVED', 'PENDING'],
       },
+    };
+
+    if (appointment.responsible_employee_id) {
+      approveConflictWhere.responsible_employee_id = appointment.responsible_employee_id;
+    }
+
+    const conflictingAppointment = await Appointment.findOne({
+      where: approveConflictWhere,
     });
 
     if (conflictingAppointment) {
@@ -591,6 +624,36 @@ export const getMonthlyAvailability = async (req: Request, res: Response) => {
       });
     }
 
+    const studio = await Studio.findByPk(studio_id);
+
+    if (!studio) {
+      return res.status(404).json({ message: 'Studio not found' });
+    }
+
+    let resolvedEmployeeId: number | null = null;
+
+    if (studio.type === 'TEAM') {
+      const { employee_id } = req.query;
+
+      if (!employee_id || typeof employee_id !== 'string') {
+        return res.status(400).json({
+          message: 'employee_id is required for TEAM studios',
+        });
+      }
+
+      const employee = await Employee.findOne({
+        where: { id: Number(employee_id), studio_id, active: true },
+      });
+
+      if (!employee) {
+        return res.status(400).json({
+          message: 'Invalid employee_id for this studio',
+        });
+      }
+
+      resolvedEmployeeId = employee.id;
+    }
+
     const daysInMonth = new Date(year, monthNumber, 0).getDate();
 
     const monthDates = Array.from({ length: daysInMonth }, (_, index) => {
@@ -615,6 +678,7 @@ export const getMonthlyAvailability = async (req: Request, res: Response) => {
         WeeklyAvailability.findAll({
           where: {
             studio_id,
+            employee_id: resolvedEmployeeId,
             is_active: true,
           },
           attributes: ['weekday', 'time'],
@@ -624,6 +688,7 @@ export const getMonthlyAvailability = async (req: Request, res: Response) => {
         AvailabilityOverride.findAll({
           where: {
             studio_id,
+            employee_id: resolvedEmployeeId,
             date: {
               [Op.between]: [startDate, endDate],
             },
@@ -634,6 +699,7 @@ export const getMonthlyAvailability = async (req: Request, res: Response) => {
         Appointment.findAll({
           where: {
             studio_id,
+            responsible_employee_id: resolvedEmployeeId,
             scheduled_date: {
               [Op.between]: [startDate, endDate],
             },

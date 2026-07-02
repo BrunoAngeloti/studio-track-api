@@ -1,7 +1,31 @@
 import { Employee } from '../models/Employee';
+import { Studio } from '../models/Studio';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { Op } from 'sequelize';
+
+export const getPublicEmployees = async (req: Request, res: Response) => {
+  try {
+    const { studio_id } = req.params;
+
+    const employees = await Employee.findAll({
+      where: {
+        studio_id,
+        active: true,
+      },
+      attributes: ['id', 'name', 'role'],
+      order: [['name', 'ASC']],
+    });
+
+    return res.status(200).json({ data: employees });
+  } catch (error) {
+    console.error('Error fetching public employees:', error);
+
+    return res.status(500).json({
+      error: 'Failed to fetch employees',
+    });
+  }
+};
 
 
 
@@ -13,6 +37,18 @@ export const createEmployee = async (req: AuthenticatedRequest, res: Response) =
 
     if (!studio_id) {
       return res.status(400).json({ error: 'Studio ID is required' });
+    }
+
+    const studio = await Studio.findByPk(studio_id);
+
+    if (!studio) {
+      return res.status(404).json({ error: 'Studio not found' });
+    }
+
+    if (studio.type === 'INDIVIDUAL') {
+      return res.status(403).json({
+        error: 'Employees can only be created for TEAM studios. Switch the studio to TEAM mode first.',
+      });
     }
 
     const {

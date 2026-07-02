@@ -1,6 +1,7 @@
 import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
 import { Studio } from './Studio';
 import { AdditionalService } from './AdditionalService';
+import { Employee } from './Employee';
 
 type ServiceAttributes = {
   id: number;
@@ -10,11 +11,12 @@ type ServiceAttributes = {
   price: number;
   estimated_time?: number;
   archived: boolean;
+  employee_id?: number | null;
 };
 
 type ServiceCreationAttributes = Optional<
   ServiceAttributes,
-  'id' | 'description' | 'estimated_time'
+  'id' | 'description' | 'estimated_time' | 'employee_id'
 >;
 
 export class Service
@@ -28,6 +30,7 @@ export class Service
   declare price: number;
   declare estimated_time?: number;
   declare archived: boolean;
+  declare employee_id?: number | null;
 
   static initModel(sequelize: Sequelize): typeof Service {
     return Service.init(
@@ -68,6 +71,11 @@ export class Service
           allowNull: false,
           defaultValue: false,
         },
+
+        employee_id: {
+          type: DataTypes.INTEGER,
+          allowNull: true,
+        },
       },
       {
         sequelize,
@@ -83,6 +91,11 @@ export class Service
     Service.belongsTo(Studio, {
       foreignKey: 'studio_id',
       as: 'studio',
+    });
+
+    Service.belongsTo(Employee, {
+      foreignKey: 'employee_id',
+      as: 'employee',
     });
   }
 }

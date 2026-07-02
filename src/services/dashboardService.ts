@@ -11,6 +11,7 @@ type DashboardParams = {
   period?: string
   startDate?: Date
   endDate?: Date
+  employeeId?: string
 }
 
 const resolveDateRange = ({
@@ -47,17 +48,24 @@ export const getDashboardSummaryService = async ({
   period,
   startDate,
   endDate,
+  employeeId,
 }: DashboardParams) => {
 
   const range = resolveDateRange({ period, startDate, endDate })
 
-  const transactions = await Transaction.findAll({
-    where: {
-      studio_id: studioId,
-      date: {
-        [Op.between]: [range.startDate, range.endDate],
-      },
+  const whereClause: any = {
+    studio_id: studioId,
+    date: {
+      [Op.between]: [range.startDate, range.endDate],
     },
+  }
+
+  if (employeeId) {
+    whereClause.responsible_employee_id = Number(employeeId)
+  }
+
+  const transactions = await Transaction.findAll({
+    where: whereClause,
   })
 
   let income = 0
@@ -121,17 +129,24 @@ export const getDashboardCashflowService = async ({
   period,
   startDate,
   endDate,
+  employeeId,
 }: DashboardParams) => {
 
   const range = resolveDateRange({ period, startDate, endDate })
 
-  const transactions = await Transaction.findAll({
-    where: {
-      studio_id: studioId,
-      date: {
-        [Op.between]: [range.startDate, range.endDate],
-      },
+  const whereClause: any = {
+    studio_id: studioId,
+    date: {
+      [Op.between]: [range.startDate, range.endDate],
     },
+  }
+
+  if (employeeId) {
+    whereClause.responsible_employee_id = Number(employeeId)
+  }
+
+  const transactions = await Transaction.findAll({
+    where: whereClause,
     order: [['date', 'ASC']],
   })
 
@@ -190,6 +205,7 @@ export const getDashboardTransactionsByCategoryService = async ({
   startDate,
   endDate,
   type,
+  employeeId,
 }: DashboardParams & { type?: string }) => {
 
   const range = resolveDateRange({ period, startDate, endDate })
@@ -203,6 +219,10 @@ export const getDashboardTransactionsByCategoryService = async ({
 
   if (type) {
     whereClause.type = type
+  }
+
+  if (employeeId) {
+    whereClause.responsible_employee_id = Number(employeeId)
   }
 
   const transactions = await Transaction.findAll({
@@ -258,18 +278,25 @@ export const getDashboardPaymentMethodsService = async ({
   period,
   startDate,
   endDate,
+  employeeId,
 }: DashboardParams) => {
 
   const range = resolveDateRange({ period, startDate, endDate })
 
-  const transactions = await Transaction.findAll({
-    where: {
-      studio_id: studioId,
-      type: 'INCOME',
-      date: {
-        [Op.between]: [range.startDate, range.endDate],
-      },
+  const whereClause: any = {
+    studio_id: studioId,
+    type: 'INCOME',
+    date: {
+      [Op.between]: [range.startDate, range.endDate],
     },
+  }
+
+  if (employeeId) {
+    whereClause.responsible_employee_id = Number(employeeId)
+  }
+
+  const transactions = await Transaction.findAll({
+    where: whereClause,
   })
 
   const grouped = new Map<string, number>()
@@ -411,11 +438,13 @@ export const getDashboardRecentTransactionsService = async ({
   limit,
   startDate,
   endDate,
+  employeeId,
 }: {
   studioId: string
   limit: number
   startDate?: Date
   endDate?: Date
+  employeeId?: string
 }) => {
 
   const whereClause: any = {
@@ -426,6 +455,10 @@ export const getDashboardRecentTransactionsService = async ({
     whereClause.date = {
       [Op.between]: [startDate, endDate],
     }
+  }
+
+  if (employeeId) {
+    whereClause.responsible_employee_id = Number(employeeId)
   }
 
   const transactions = await Transaction.findAll({

@@ -5,6 +5,7 @@ import { Employee } from '../models/Employee';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { Response } from 'express';
 import { Op } from 'sequelize';
+import { requireEmployeeIfTeam, StudioTypeValidationError } from '../utils/studioType';
 
 export const createTransaction = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -28,6 +29,8 @@ export const createTransaction = async (req: AuthenticatedRequest, res: Response
       vendor
     } = req.body;
 
+    const resolvedResponsibleEmployeeId = await requireEmployeeIfTeam(studio_id, responsible_employee_id);
+
     const transaction = await Transaction.create({
       studio_id,
       type,
@@ -35,7 +38,7 @@ export const createTransaction = async (req: AuthenticatedRequest, res: Response
       date,
       category_id,
       customer_id,
-      responsible_employee_id,
+      responsible_employee_id: resolvedResponsibleEmployeeId,
       repasse_employee_id,
       repasse_percentage,
       payment_method,
@@ -46,6 +49,10 @@ export const createTransaction = async (req: AuthenticatedRequest, res: Response
     return res.status(201).json({ transaction });
 
   } catch (error: any) {
+
+    if (error instanceof StudioTypeValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
 
     console.error('Error creating transaction:', error);
 
@@ -73,6 +80,7 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
       start_date,
       end_date,
       payment_method,
+      responsible_employee_id,
       search = '',
       page = '1',
       limit = '20',
@@ -90,6 +98,7 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
     if (type) where.type = type;
     if (category_id) where.category_id = category_id;
     if (payment_method) where.payment_method = payment_method;
+    if (responsible_employee_id) where.responsible_employee_id = Number(responsible_employee_id);
 
     if (start_date && end_date) {
       where.date = {
@@ -232,6 +241,10 @@ export const updateTransaction = async (req: AuthenticatedRequest, res: Response
     const id = req.params.id;
     const studio_id = req.studio?.id;
 
+    if (!studio_id) {
+      return res.status(400).json({ error: 'Studio ID is required' });
+    }
+
     const {
       type,
       amount,
@@ -257,13 +270,15 @@ export const updateTransaction = async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
+    const resolvedResponsibleEmployeeId = await requireEmployeeIfTeam(studio_id, responsible_employee_id);
+
     await transaction.update({
       type,
       amount,
       date,
       category_id,
       customer_id,
-      responsible_employee_id,
+      responsible_employee_id: resolvedResponsibleEmployeeId,
       repasse_employee_id,
       repasse_percentage,
       payment_method,
@@ -274,6 +289,10 @@ export const updateTransaction = async (req: AuthenticatedRequest, res: Response
     return res.status(200).json({ transaction });
 
   } catch (error: any) {
+
+    if (error instanceof StudioTypeValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
 
     console.error('Error updating transaction:', error);
 

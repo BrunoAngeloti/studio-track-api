@@ -3,6 +3,7 @@ import {
   createStudio,
   getStudios,
   updateStudio,
+  updateStudioType,
   deleteStudio,
   loginStudio,
   getPublicStudioByUsername,
@@ -21,6 +22,7 @@ router.get('/public/studios/:username', getPublicStudioByUsername);
 // privadas
 router.get('/studios/me', authMiddleware, getStudios);
 router.put('/studios/me', authMiddleware, updateStudio);
+router.patch('/studios/me/type', authMiddleware, updateStudioType);
 router.delete('/studios/me', authMiddleware, deleteStudio);
 
 export default router;

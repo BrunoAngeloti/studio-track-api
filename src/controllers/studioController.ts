@@ -44,6 +44,7 @@ export const createStudio = async (req: Request, res: Response) => {
           secondary_color: studio.secondary_color,
           instagram: studio.instagram,
           catalog_link: studio.catalog_link,
+          type: studio.type,
         },
       });
     })
@@ -80,6 +81,7 @@ export const getStudios = (req: AuthenticatedRequest, res: Response) => {
           secondary_color: studio.secondary_color,
           instagram: studio.instagram,
           catalog_link: studio.catalog_link,
+          type: studio.type,
         },
       });
     })
@@ -110,6 +112,7 @@ export const getPublicStudioByUsername = (req: Request, res: Response) => {
           phone: studio.phone,
           primary_color: studio.primary_color,
           secondary_color: studio.secondary_color,
+          type: studio.type,
         },
       });
     })
@@ -182,6 +185,7 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
             secondary_color: studio.secondary_color,
             instagram: studio.instagram,
             catalog_link: studio.catalog_link,
+            type: studio.type,
           },
         });
       }
@@ -190,6 +194,42 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
       console.error('Error updating studio:', error);
       res.status(500).json({ error: 'Failed to update studio' });
     });
+};
+
+export const updateStudioType = async (req: AuthenticatedRequest, res: Response) => {
+  const studioId = req.studio?.id;
+  const { type } = req.body;
+
+  if (type !== 'INDIVIDUAL' && type !== 'TEAM') {
+    return res.status(400).json({ error: "type must be 'INDIVIDUAL' or 'TEAM'" });
+  }
+
+  try {
+    const studio = await Studio.findByPk(studioId);
+
+    if (!studio) {
+      return res.status(404).json({ error: 'Studio not found' });
+    }
+
+    await studio.update({ type });
+
+    res.status(200).json({
+      studio: {
+        id: studio.id,
+        name: studio.name,
+        email: studio.email,
+        phone: studio.phone,
+        primary_color: studio.primary_color,
+        secondary_color: studio.secondary_color,
+        instagram: studio.instagram,
+        catalog_link: studio.catalog_link,
+        type: studio.type,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating studio type:', error);
+    res.status(500).json({ error: 'Failed to update studio type' });
+  }
 };
 
 export const deleteStudio = (req: AuthenticatedRequest, res: Response) => {
@@ -252,6 +292,7 @@ export const loginStudio = (req: Request, res: Response) => {
           phone: studio.phone,
           primary_color: studio.primary_color,
           secondary_color: studio.secondary_color,
+          type: studio.type,
         },
       });
     })

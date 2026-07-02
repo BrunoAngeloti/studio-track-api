@@ -1,5 +1,6 @@
 import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
 import { Studio } from './Studio';
+import { Employee } from './Employee';
 
 type WeeklyAvailabilityAttributes = {
   id: number;
@@ -7,11 +8,12 @@ type WeeklyAvailabilityAttributes = {
   weekday: number; // 0=domingo, 1=segunda ... 6=sábado
   time: string;
   is_active: boolean;
+  employee_id?: number | null;
 };
 
 type WeeklyAvailabilityCreationAttributes = Optional<
   WeeklyAvailabilityAttributes,
-  'id' | 'is_active'
+  'id' | 'is_active' | 'employee_id'
 >;
 
 export class WeeklyAvailability
@@ -26,6 +28,7 @@ export class WeeklyAvailability
   declare weekday: number;
   declare time: string;
   declare is_active: boolean;
+  declare employee_id?: number | null;
 
   static initModel(sequelize: Sequelize): typeof WeeklyAvailability {
     return WeeklyAvailability.init(
@@ -61,6 +64,11 @@ export class WeeklyAvailability
           allowNull: false,
           defaultValue: true,
         },
+
+        employee_id: {
+          type: DataTypes.INTEGER,
+          allowNull: true,
+        },
       },
       {
         sequelize,
@@ -73,8 +81,7 @@ export class WeeklyAvailability
             fields: ['studio_id', 'weekday'],
           },
           {
-            unique: true,
-            fields: ['studio_id', 'weekday', 'time'],
+            fields: ['studio_id', 'employee_id', 'weekday'],
           },
         ],
       }
@@ -85,6 +92,11 @@ export class WeeklyAvailability
     WeeklyAvailability.belongsTo(Studio, {
       foreignKey: 'studio_id',
       as: 'studio',
+    });
+
+    WeeklyAvailability.belongsTo(Employee, {
+      foreignKey: 'employee_id',
+      as: 'employee',
     });
   }
 }

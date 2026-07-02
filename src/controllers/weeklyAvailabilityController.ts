@@ -1,6 +1,8 @@
 import { Response } from 'express';
 import { WeeklyAvailability } from '../models/WeeklyAvailability';
+import { Studio } from '../models/Studio';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+import { requireEmployeeIfTeam, StudioTypeValidationError } from '../utils/studioType';
 
 export const createWeeklyAvailability = async (
   req: AuthenticatedRequest,
@@ -15,7 +17,7 @@ export const createWeeklyAvailability = async (
       });
     }
 
-    const { weekday, time, is_active } = req.body;
+    const { weekday, time, is_active, employee_id } = req.body;
 
     if (weekday === undefined || !time) {
       return res.status(400).json({
@@ -31,11 +33,14 @@ export const createWeeklyAvailability = async (
       });
     }
 
+    const resolvedEmployeeId = await requireEmployeeIfTeam(studio_id, employee_id);
+
     const existingWeeklyAvailability = await WeeklyAvailability.findOne({
       where: {
         studio_id,
         weekday: weekdayNumber,
         time,
+        employee_id: resolvedEmployeeId,
       },
     });
 
@@ -50,10 +55,15 @@ export const createWeeklyAvailability = async (
       weekday: weekdayNumber,
       time,
       is_active: is_active ?? true,
+      employee_id: resolvedEmployeeId,
     });
 
     return res.status(201).json(weeklyAvailability);
   } catch (error) {
+    if (error instanceof StudioTypeValidationError) {
+      return res.status(error.status).json({ message: error.message });
+    }
+
     console.error('createWeeklyAvailability error:', error);
     return res.status(500).json({
       message: 'Error creating weekly availability',
@@ -74,11 +84,29 @@ export const getWeeklyAvailabilities = async (
       });
     }
 
-    const { weekday } = req.query;
+    const studio = await Studio.findByPk(studio_id);
+
+    if (!studio) {
+      return res.status(404).json({ message: 'Studio not found' });
+    }
+
+    const { weekday, employee_id } = req.query;
 
     const where: any = {
       studio_id,
     };
+
+    if (studio.type === 'TEAM') {
+      if (!employee_id) {
+        return res.status(400).json({
+          message: 'employee_id is required for TEAM studios',
+        });
+      }
+
+      where.employee_id = Number(employee_id);
+    } else {
+      where.employee_id = null;
+    }
 
     if (typeof weekday === 'string' && weekday.trim()) {
       const weekdayNumber = Number(weekday);
@@ -126,7 +154,7 @@ export const updateWeeklyAvailability = async (
     }
 
     const { id } = req.params;
-    const { weekday, time, is_active } = req.body;
+    const { weekday, time, is_active, employee_id } = req.body;
 
     const weeklyAvailability = await WeeklyAvailability.findOne({
       where: {
@@ -151,11 +179,17 @@ export const updateWeeklyAvailability = async (
       });
     }
 
+    const resolvedEmployeeId =
+      employee_id !== undefined
+        ? await requireEmployeeIfTeam(studio_id, employee_id)
+        : weeklyAvailability.employee_id ?? null;
+
     const duplicateWeeklyAvailability = await WeeklyAvailability.findOne({
       where: {
         studio_id,
         weekday: nextWeekday,
         time: nextTime,
+        employee_id: resolvedEmployeeId,
       },
     });
 
@@ -173,10 +207,15 @@ export const updateWeeklyAvailability = async (
       time: nextTime,
       is_active:
         is_active !== undefined ? is_active : weeklyAvailability.is_active,
+      employee_id: resolvedEmployeeId,
     });
 
     return res.status(200).json(weeklyAvailability);
   } catch (error) {
+    if (error instanceof StudioTypeValidationError) {
+      return res.status(error.status).json({ message: error.message });
+    }
+
     console.error('updateWeeklyAvailability error:', error);
     return res.status(500).json({
       message: 'Error updating weekly availability',

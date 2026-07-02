@@ -13,7 +13,7 @@ type TransactionAttributes = {
   category_id?: number;
   customer_id?: number;
 
-  responsible_employee_id?: number;
+  responsible_employee_id?: number | null;
   repasse_employee_id?: number | null;
   repasse_percentage?: number;
 
@@ -49,7 +49,7 @@ export class Transaction
   declare category_id?: number;
   declare customer_id?: number;
 
-  declare responsible_employee_id?: number;
+  declare responsible_employee_id?: number | null;
   declare repasse_employee_id?: number | null;
   declare repasse_percentage?: number;
 

@@ -1,5 +1,6 @@
 import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
 import { Studio } from './Studio';
+import { Employee } from './Employee';
 
 type AvailabilityOverrideType = 'ADD' | 'REMOVE' | 'BLOCK_DAY';
 
@@ -10,11 +11,12 @@ type AvailabilityOverrideAttributes = {
   type: AvailabilityOverrideType;
   time?: string | null;
   reason?: string | null;
+  employee_id?: number | null;
 };
 
 type AvailabilityOverrideCreationAttributes = Optional<
   AvailabilityOverrideAttributes,
-  'id' | 'time' | 'reason'
+  'id' | 'time' | 'reason' | 'employee_id'
 >;
 
 export class AvailabilityOverride
@@ -30,6 +32,7 @@ export class AvailabilityOverride
   declare type: AvailabilityOverrideType;
   declare time?: string | null;
   declare reason?: string | null;
+  declare employee_id?: number | null;
 
   static initModel(sequelize: Sequelize): typeof AvailabilityOverride {
     return AvailabilityOverride.init(
@@ -68,6 +71,11 @@ export class AvailabilityOverride
           type: DataTypes.STRING,
           allowNull: true,
         },
+
+        employee_id: {
+          type: DataTypes.INTEGER,
+          allowNull: true,
+        },
       },
       {
         sequelize,
@@ -83,8 +91,7 @@ export class AvailabilityOverride
             fields: ['studio_id', 'date', 'type'],
           },
           {
-            unique: true,
-            fields: ['studio_id', 'date', 'type', 'time'],
+            fields: ['studio_id', 'employee_id', 'date'],
           },
         ],
       }
@@ -95,6 +102,11 @@ export class AvailabilityOverride
     AvailabilityOverride.belongsTo(Studio, {
       foreignKey: 'studio_id',
       as: 'studio',
+    });
+
+    AvailabilityOverride.belongsTo(Employee, {
+      foreignKey: 'employee_id',
+      as: 'employee',
     });
   }
 }

@@ -1,35 +1,44 @@
 import { Service } from '../models/Service';
+import { Employee } from '../models/Employee';
 import { Request, Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { Op } from 'sequelize';
+import { requireEmployeeIfTeam, StudioTypeValidationError } from '../utils/studioType';
 
-export const createService = (req: AuthenticatedRequest, res: Response) => {
+export const createService = async (req: AuthenticatedRequest, res: Response) => {
   const studio_id = req.studio?.id;
   if (!studio_id) {
     return res.status(400).json({ error: 'Studio ID is required' });
   }
 
-  const { name, description, price, estimated_time } = req.body;
+  const { name, description, price, estimated_time, employee_id } = req.body;
 
-  Service.create({
-    studio_id,
-    name,
-    description,
-    price,
-    estimated_time,
-    archived: false,
-  })
-    .then((service) => {
-      res.status(201).json({ service });
-    })
-    .catch((error) => {
-      console.error('Error creating service:', error);
+  try {
+    const resolvedEmployeeId = await requireEmployeeIfTeam(studio_id, employee_id);
 
-      res.status(400).json({
-        error: error?.message ?? 'Failed to create service',
-        details: error?.errors?.map((e: any) => e.message),
-      });
+    const service = await Service.create({
+      studio_id,
+      name,
+      description,
+      price,
+      estimated_time,
+      employee_id: resolvedEmployeeId,
+      archived: false,
     });
+
+    res.status(201).json({ service });
+  } catch (error: any) {
+    if (error instanceof StudioTypeValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+
+    console.error('Error creating service:', error);
+
+    res.status(400).json({
+      error: error?.message ?? 'Failed to create service',
+      details: error?.errors?.map((e: any) => e.message),
+    });
+  }
 };
 
 export const getServices = async (req: AuthenticatedRequest, res: Response) => {
@@ -59,6 +68,7 @@ export const getServices = async (req: AuthenticatedRequest, res: Response) => {
 
     const { rows, count } = await Service.findAndCountAll({
       where,
+      include: [{ model: Employee, as: 'employee', attributes: ['id', 'name'] }],
       limit: Number(limit),
       offset,
       order: [['name', 'ASC']],
@@ -97,6 +107,7 @@ export const getArchivedServices = async (req: AuthenticatedRequest, res: Respon
         studio_id,
         archived: true,
       },
+      include: [{ model: Employee, as: 'employee', attributes: ['id', 'name'] }],
       order: [['name', 'ASC']],
     });
 
@@ -194,6 +205,7 @@ export const getServiceById = (req: AuthenticatedRequest, res: Response) => {
       id,
       studio_id,
     },
+    include: [{ model: Employee, as: 'employee', attributes: ['id', 'name'] }],
   })
     .then((service) => {
 
@@ -210,50 +222,49 @@ export const getServiceById = (req: AuthenticatedRequest, res: Response) => {
     });
 };
 
-export const updateService = (req: AuthenticatedRequest, res: Response) => {
+export const updateService = async (req: AuthenticatedRequest, res: Response) => {
 
   const id = req.params.id;
   const studio_id = req.studio?.id;
 
-  const { name, description, price, estimated_time } = req.body;
+  if (!studio_id) {
+    return res.status(400).json({ error: 'Studio ID is required' });
+  }
 
-  Service.findOne({
-    where: { id, studio_id },
-  })
-    .then((service) => {
+  const { name, description, price, estimated_time, employee_id } = req.body;
 
-      if (!service) {
-        res.status(404).json({ error: 'Service not found' });
-        return;
-      }
+  try {
+    const service = await Service.findOne({ where: { id, studio_id } });
 
-      return service.update({
-        name,
-        description,
-        price,
-        estimated_time
-      });
+    if (!service) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
 
-    })
-    .then((updatedService) => {
+    const resolvedEmployeeId = await requireEmployeeIfTeam(studio_id, employee_id);
 
-      if (!updatedService) return;
-
-      res.status(200).json({
-        service: updatedService,
-      });
-
-    })
-    .catch((error) => {
-
-      console.error('Error updating service:', error);
-
-      res.status(400).json({
-        error: error?.message ?? 'Failed to update service',
-        details: error?.errors?.map((e: any) => e.message),
-      });
-
+    const updatedService = await service.update({
+      name,
+      description,
+      price,
+      estimated_time,
+      employee_id: resolvedEmployeeId,
     });
+
+    res.status(200).json({
+      service: updatedService,
+    });
+  } catch (error: any) {
+    if (error instanceof StudioTypeValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+
+    console.error('Error updating service:', error);
+
+    res.status(400).json({
+      error: error?.message ?? 'Failed to update service',
+      details: error?.errors?.map((e: any) => e.message),
+    });
+  }
 };
 
 export const deleteService = (req: AuthenticatedRequest, res: Response) => {
@@ -319,6 +330,7 @@ export const getPublicServices = async (req: Request, res: Response) => {
   try {
     const { rows, count } = await Service.findAndCountAll({
       where,
+      include: [{ model: Employee, as: 'employee', attributes: ['id', 'name'] }],
       limit: Number(limit),
       offset,
       order: [['name', 'ASC']],
@@ -352,6 +364,7 @@ export const getPublicServiceById = async (req: Request, res: Response) => {
         studio_id,
         archived: false,
       },
+      include: [{ model: Employee, as: 'employee', attributes: ['id', 'name'] }],
     });
 
     if (!service) {

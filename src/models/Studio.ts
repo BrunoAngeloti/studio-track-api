@@ -12,6 +12,7 @@ type StudioAttributes = {
   catalog_link?: string;
   primary_color?: string;
   secondary_color?: string;
+  type: 'INDIVIDUAL' | 'TEAM';
   created_at?: Date;
   updated_at?: Date;
 };
@@ -25,6 +26,7 @@ type StudioCreationAttributes = Optional<
   | 'catalog_link'
   | 'primary_color'
   | 'secondary_color'
+  | 'type'
   | 'created_at'
   | 'updated_at'
 >;
@@ -41,6 +43,7 @@ export class Studio
   declare phone?: string;
   declare primary_color?: string;
   declare secondary_color?: string;
+  declare type: 'INDIVIDUAL' | 'TEAM';
   declare created_at?: Date;
   declare updated_at?: Date;
   declare instagram?: string;
@@ -101,6 +104,15 @@ export class Studio
         secondary_color: {
           type: DataTypes.STRING,
           allowNull: true,
+        },
+
+        type: {
+          type: DataTypes.STRING,
+          allowNull: false,
+          defaultValue: 'INDIVIDUAL',
+          validate: {
+            isIn: [['INDIVIDUAL', 'TEAM']],
+          },
         },
 
         created_at: {
