@@ -13,6 +13,7 @@ import {
 } from '../controllers/additionalServiceController';
 
 import { authMiddleware } from '../middlewares/authMiddleware';
+import { requireActiveSubscription } from '../middlewares/requireActiveSubscription';
 
 const router = Router();
 
@@ -27,29 +28,29 @@ router.get(
 );
 
 // privadas
-router.post('/additional-services', authMiddleware, createAdditionalService);
-router.get('/additional-services', authMiddleware, getAdditionalServices);
+router.post('/additional-services', authMiddleware, requireActiveSubscription, createAdditionalService);
+router.get('/additional-services', authMiddleware, requireActiveSubscription, getAdditionalServices);
 router.get(
   '/additional-services/archived',
-  authMiddleware,
+  authMiddleware, requireActiveSubscription,
   getArchivedAdditionalServices
 );
 router.patch(
   '/additional-services/:id/archive',
-  authMiddleware,
+  authMiddleware, requireActiveSubscription,
   archiveAdditionalService
 );
 router.patch(
   '/additional-services/:id/unarchive',
-  authMiddleware,
+  authMiddleware, requireActiveSubscription,
   unarchiveAdditionalService
 );
 
-router.get('/additional-services/:id', authMiddleware, getAdditionalServiceById);
-router.put('/additional-services/:id', authMiddleware, updateAdditionalService);
+router.get('/additional-services/:id', authMiddleware, requireActiveSubscription, getAdditionalServiceById);
+router.put('/additional-services/:id', authMiddleware, requireActiveSubscription, updateAdditionalService);
 router.delete(
   '/additional-services/:id',
-  authMiddleware,
+  authMiddleware, requireActiveSubscription,
   deleteAdditionalService
 );
 

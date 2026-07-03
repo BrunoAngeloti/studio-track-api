@@ -4,6 +4,7 @@ import {
   removeAdditionalServiceFromAppointment,
 } from '../controllers/appointmentAdditionalServicesController';
 import { authMiddleware } from '../middlewares/authMiddleware';
+import { requireActiveSubscription } from '../middlewares/requireActiveSubscription';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ router.post(
 
 router.delete(
   '/appointments/:appointment_id/additional-services/:additional_service_id',
-  authMiddleware,
+  authMiddleware, requireActiveSubscription,
   removeAdditionalServiceFromAppointment
 );
 

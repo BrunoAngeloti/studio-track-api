@@ -7,12 +7,13 @@ import {
 } from '../controllers/weeklyAvailabilityController';
 
 import { authMiddleware } from '../middlewares/authMiddleware';
+import { requireActiveSubscription } from '../middlewares/requireActiveSubscription';
 
 const router = Router();
 
-router.post('/weekly-availabilities', authMiddleware, createWeeklyAvailability);
-router.get('/weekly-availabilities', authMiddleware, getWeeklyAvailabilities);
-router.put('/weekly-availabilities/:id', authMiddleware, updateWeeklyAvailability);
-router.delete('/weekly-availabilities/:id', authMiddleware, deleteWeeklyAvailability);
+router.post('/weekly-availabilities', authMiddleware, requireActiveSubscription, createWeeklyAvailability);
+router.get('/weekly-availabilities', authMiddleware, requireActiveSubscription, getWeeklyAvailabilities);
+router.put('/weekly-availabilities/:id', authMiddleware, requireActiveSubscription, updateWeeklyAvailability);
+router.delete('/weekly-availabilities/:id', authMiddleware, requireActiveSubscription, deleteWeeklyAvailability);
 
 export default router;

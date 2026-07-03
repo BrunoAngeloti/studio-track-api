@@ -18,7 +18,8 @@ import weeklyAvailabilityRoutes from './routes/weeklyAvailabilityRoutes';
 import availabilityOverrideRoutes from './routes/availabilityOverrideRoutes';
 import appointmentAdditionalServiceRoutes from './routes/appointmentAdditionalServicesRoutes';
 import appointmentRoutes from './routes/appointmentsRoutes';
-import pushRoutes from './routes/pushRoutes';
+import billingRoutes from './routes/billingRoutes';
+import { handleStripeWebhook } from './controllers/webhookController';
 
 import { Studio } from './models/Studio';
 import { Category } from './models/Category';
@@ -32,7 +33,6 @@ import { WeeklyAvailability } from './models/WeeklyAvailability';
 import { AvailabilityOverride } from './models/AvailabilityOverride';
 import { AppointmentAdditionalService } from './models/AppointmentAdditionalService';
 import { Appointment } from './models/Appointment';
-import { PushSubscription } from './models/PushSubscription';
 
 const app = express();
 
@@ -49,6 +49,11 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true
 }));
+
+// Precisa do corpo bruto (não parseado) pra verificar a assinatura do Stripe,
+// então essa rota é montada antes do express.json() global.
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), handleStripeWebhook);
+
 app.use(express.json());
 
 const isLocalDatabase = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || "");
@@ -75,7 +80,6 @@ WeeklyAvailability.initModel(sequelize)
 AvailabilityOverride.initModel(sequelize) 
 AppointmentAdditionalService.initModel(sequelize) 
 Appointment.initModel(sequelize)
-PushSubscription.initModel(sequelize)
 
 Studio.associate();
 Category.associate();
@@ -88,7 +92,6 @@ RepasseConfig.associate();
 WeeklyAvailability.associate();
 AvailabilityOverride.associate();
 Appointment.associate();
-PushSubscription.associate();
 
 
 app.use('/api', studioRoutes);
@@ -104,7 +107,7 @@ app.use('/api', weeklyAvailabilityRoutes);
 app.use('/api', availabilityOverrideRoutes);
 app.use('/api', appointmentAdditionalServiceRoutes);
 app.use('/api', appointmentRoutes);
-app.use('/api', pushRoutes);
+app.use('/api', billingRoutes);
 
 app.get("/health", (req, res) => {
   res.status(200).send("ok");

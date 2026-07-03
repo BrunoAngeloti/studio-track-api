@@ -9,7 +9,6 @@ import { Service } from '../models/Service';
 import { AdditionalService } from '../models/AdditionalService';
 import { Studio } from '../models/Studio';
 import { Employee } from '../models/Employee';
-import { sendPushToStudio } from '../services/pushService';
 import { requireEmployeeIfTeam, StudioTypeValidationError } from '../utils/studioType';
 
 function normalizePhone(phone: string) {
@@ -141,17 +140,6 @@ export const createAppointment = async (req: Request, res: Response) => {
       note: note ?? null,
       expires_at: null,
     });
-
-    // Send notifications if appointment is pending
-    const appointmentStatus = status ?? 'PENDING';
-    if (appointmentStatus === 'PENDING') {
-      // Push notification (não bloqueia a resposta)
-      sendPushToStudio(studio_id, {
-        title: '📅 Novo agendamento!',
-        body: `${requester_name} quer agendar para ${scheduled_date} às ${scheduled_time.substring(0, 5)}`,
-        url: '/dashboard/appointments',
-      }).catch(() => {});
-    }
 
     return res.status(201).json(appointment);
   } catch (error) {

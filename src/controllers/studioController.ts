@@ -4,6 +4,21 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateUniqueStudioUsername } from '../utils/generateStudioUsername';
+import { seedDefaultCategories } from '../utils/seedDefaultCategories';
+
+function generateStudioToken(studio: Studio) {
+  return jwt.sign(
+    {
+      id: studio.id,
+      email: studio.email,
+      name: studio.name,
+    },
+    process.env.JWT_SECRET as string,
+    {
+      expiresIn: '7d',
+    }
+  );
+}
 
 export const createStudio = async (req: Request, res: Response) => {
   const {
@@ -17,50 +32,62 @@ export const createStudio = async (req: Request, res: Response) => {
     catalog_link,
   } = req.body;
 
-  const hashedPassword = bcrypt.hashSync(password, 10);
-  const username = await generateUniqueStudioUsername(name);
+  try {
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const username = await generateUniqueStudioUsername(name);
 
-  const userToCreate = {
-    name,
-    username,
-    email,
-    password: hashedPassword,
-    phone,
-    primary_color,
-    secondary_color,
-    instagram,
-    catalog_link,
-  };
+    const userToCreate = {
+      name,
+      username,
+      email,
+      password: hashedPassword,
+      phone,
+      primary_color,
+      secondary_color,
+      instagram,
+      catalog_link,
+    };
 
-  Studio.create(userToCreate)
-    .then((studio) => {
-      res.status(201).json({
-        studio: {
-          id: studio.id,
-          name: studio.name,
-          email: studio.email,
-          phone: studio.phone,
-          primary_color: studio.primary_color,
-          secondary_color: studio.secondary_color,
-          instagram: studio.instagram,
-          catalog_link: studio.catalog_link,
-          type: studio.type,
-          booking_horizon_months: studio.booking_horizon_months,
-        },
-      });
-    })
-    .catch((error) => {
-      console.error('Error creating studio:', error);
+    const studio = await Studio.create(userToCreate);
 
-      if (error?.name === 'SequelizeUniqueConstraintError') {
-        return res.status(409).json({ error: 'Email already exists' });
-      }
+    try {
+      await seedDefaultCategories(studio.id);
+    } catch (seedError) {
+      console.error('Error seeding default categories:', seedError);
+    }
 
-      return res.status(400).json({
-        error: error?.message ?? 'Failed to create studio',
-        details: error?.errors?.map((e: any) => e.message),
-      });
+    const token = generateStudioToken(studio);
+
+    res.status(201).json({
+      token,
+      studio: {
+        id: studio.id,
+        name: studio.name,
+        email: studio.email,
+        phone: studio.phone,
+        primary_color: studio.primary_color,
+        secondary_color: studio.secondary_color,
+        instagram: studio.instagram,
+        catalog_link: studio.catalog_link,
+        type: studio.type,
+        booking_horizon_months: studio.booking_horizon_months,
+        subscription_status: studio.subscription_status,
+        onboarding_completed: studio.onboarding_completed,
+        lifetime_free_access: studio.lifetime_free_access,
+      },
     });
+  } catch (error: any) {
+    console.error('Error creating studio:', error);
+
+    if (error?.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({ error: 'Email already exists' });
+    }
+
+    return res.status(400).json({
+      error: error?.message ?? 'Failed to create studio',
+      details: error?.errors?.map((e: any) => e.message),
+    });
+  }
 };
 
 export const getStudios = (req: AuthenticatedRequest, res: Response) => {
@@ -84,6 +111,9 @@ export const getStudios = (req: AuthenticatedRequest, res: Response) => {
           catalog_link: studio.catalog_link,
           type: studio.type,
           booking_horizon_months: studio.booking_horizon_months,
+          subscription_status: studio.subscription_status,
+          onboarding_completed: studio.onboarding_completed,
+          lifetime_free_access: studio.lifetime_free_access,
         },
       });
     })
@@ -116,6 +146,9 @@ export const getPublicStudioByUsername = (req: Request, res: Response) => {
           secondary_color: studio.secondary_color,
           type: studio.type,
           booking_horizon_months: studio.booking_horizon_months,
+          subscription_status: studio.subscription_status,
+          onboarding_completed: studio.onboarding_completed,
+          lifetime_free_access: studio.lifetime_free_access,
         },
       });
     })
@@ -190,6 +223,9 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
             catalog_link: studio.catalog_link,
             type: studio.type,
             booking_horizon_months: studio.booking_horizon_months,
+            subscription_status: studio.subscription_status,
+            onboarding_completed: studio.onboarding_completed,
+            lifetime_free_access: studio.lifetime_free_access,
           },
         });
       }
@@ -229,6 +265,9 @@ export const updateStudioType = async (req: AuthenticatedRequest, res: Response)
         catalog_link: studio.catalog_link,
         type: studio.type,
         booking_horizon_months: studio.booking_horizon_months,
+        subscription_status: studio.subscription_status,
+        onboarding_completed: studio.onboarding_completed,
+        lifetime_free_access: studio.lifetime_free_access,
       },
     });
   } catch (error) {
@@ -270,11 +309,49 @@ export const updateBookingHorizon = async (req: AuthenticatedRequest, res: Respo
         catalog_link: studio.catalog_link,
         type: studio.type,
         booking_horizon_months: studio.booking_horizon_months,
+        subscription_status: studio.subscription_status,
+        onboarding_completed: studio.onboarding_completed,
+        lifetime_free_access: studio.lifetime_free_access,
       },
     });
   } catch (error) {
     console.error('Error updating booking horizon:', error);
     res.status(500).json({ error: 'Failed to update booking horizon' });
+  }
+};
+
+export const updateOnboardingCompleted = async (req: AuthenticatedRequest, res: Response) => {
+  const studioId = req.studio?.id;
+
+  try {
+    const studio = await Studio.findByPk(studioId);
+
+    if (!studio) {
+      return res.status(404).json({ error: 'Studio not found' });
+    }
+
+    await studio.update({ onboarding_completed: true });
+
+    res.status(200).json({
+      studio: {
+        id: studio.id,
+        name: studio.name,
+        email: studio.email,
+        phone: studio.phone,
+        primary_color: studio.primary_color,
+        secondary_color: studio.secondary_color,
+        instagram: studio.instagram,
+        catalog_link: studio.catalog_link,
+        type: studio.type,
+        booking_horizon_months: studio.booking_horizon_months,
+        subscription_status: studio.subscription_status,
+        onboarding_completed: studio.onboarding_completed,
+        lifetime_free_access: studio.lifetime_free_access,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating onboarding status:', error);
+    res.status(500).json({ error: 'Failed to update onboarding status' });
   }
 };
 
@@ -316,17 +393,7 @@ export const loginStudio = (req: Request, res: Response) => {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
 
-      const token = jwt.sign(
-        {
-          id: studio.id,
-          email: studio.email,
-          name: studio.name,
-        },
-        process.env.JWT_SECRET as string,
-        {
-          expiresIn: '7d',
-        }
-      );
+      const token = generateStudioToken(studio);
 
       return res.status(200).json({
         message: 'Login successful',
@@ -340,6 +407,9 @@ export const loginStudio = (req: Request, res: Response) => {
           secondary_color: studio.secondary_color,
           type: studio.type,
           booking_horizon_months: studio.booking_horizon_months,
+          subscription_status: studio.subscription_status,
+          onboarding_completed: studio.onboarding_completed,
+          lifetime_free_access: studio.lifetime_free_access,
         },
       });
     })

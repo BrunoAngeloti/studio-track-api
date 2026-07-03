@@ -14,6 +14,12 @@ type StudioAttributes = {
   secondary_color?: string;
   type: 'INDIVIDUAL' | 'TEAM';
   booking_horizon_months: number;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  subscription_status?: string | null;
+  trial_ends_at?: Date | null;
+  onboarding_completed: boolean;
+  lifetime_free_access: boolean;
   created_at?: Date;
   updated_at?: Date;
 };
@@ -29,6 +35,12 @@ type StudioCreationAttributes = Optional<
   | 'secondary_color'
   | 'type'
   | 'booking_horizon_months'
+  | 'stripe_customer_id'
+  | 'stripe_subscription_id'
+  | 'subscription_status'
+  | 'trial_ends_at'
+  | 'onboarding_completed'
+  | 'lifetime_free_access'
   | 'created_at'
   | 'updated_at'
 >;
@@ -47,6 +59,12 @@ export class Studio
   declare secondary_color?: string;
   declare type: 'INDIVIDUAL' | 'TEAM';
   declare booking_horizon_months: number;
+  declare stripe_customer_id?: string | null;
+  declare stripe_subscription_id?: string | null;
+  declare subscription_status?: string | null;
+  declare trial_ends_at?: Date | null;
+  declare onboarding_completed: boolean;
+  declare lifetime_free_access: boolean;
   declare created_at?: Date;
   declare updated_at?: Date;
   declare instagram?: string;
@@ -125,6 +143,38 @@ export class Studio
           validate: {
             isIn: [[0, 1, 3, 6, 12]],
           },
+        },
+
+        stripe_customer_id: {
+          type: DataTypes.STRING,
+          allowNull: true,
+        },
+
+        stripe_subscription_id: {
+          type: DataTypes.STRING,
+          allowNull: true,
+        },
+
+        subscription_status: {
+          type: DataTypes.STRING,
+          allowNull: true,
+        },
+
+        trial_ends_at: {
+          type: DataTypes.DATE,
+          allowNull: true,
+        },
+
+        onboarding_completed: {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
+        },
+
+        lifetime_free_access: {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
         },
 
         created_at: {
