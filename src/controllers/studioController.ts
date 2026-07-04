@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateUniqueStudioUsername } from '../utils/generateStudioUsername';
 import { seedDefaultCategories } from '../utils/seedDefaultCategories';
+import { isPasswordValid, PASSWORD_REQUIREMENTS_MESSAGE } from '../utils/validatePassword';
 
 function generateStudioToken(studio: Studio) {
   return jwt.sign(
@@ -31,6 +32,10 @@ export const createStudio = async (req: Request, res: Response) => {
     instagram,
     catalog_link,
   } = req.body;
+
+  if (!isPasswordValid(password)) {
+    return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
+  }
 
   try {
     const hashedPassword = bcrypt.hashSync(password, 10);
@@ -195,6 +200,11 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
         instagram,
         catalog_link,
       } = req.body;
+
+      if (password && !isPasswordValid(password)) {
+        res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
+        return;
+      }
 
       const updatedStudio = {
         name,
