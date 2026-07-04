@@ -76,6 +76,7 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
 
     const {
       type,
+      status,
       category_id,
       start_date,
       end_date,
@@ -96,6 +97,7 @@ export const getTransactions = async (req: AuthenticatedRequest, res: Response) 
     };
 
     if (type) where.type = type;
+    if (status) where.status = status;
     if (category_id) where.category_id = category_id;
     if (payment_method) where.payment_method = payment_method;
     if (responsible_employee_id) where.responsible_employee_id = Number(responsible_employee_id);
@@ -300,6 +302,122 @@ export const updateTransaction = async (req: AuthenticatedRequest, res: Response
       error: error?.message ?? 'Failed to update transaction',
       details: error?.errors?.map((e: any) => e.message),
     });
+  }
+};
+
+
+
+export const approveTransaction = async (req: AuthenticatedRequest, res: Response) => {
+
+  try {
+
+    const id = req.params.id;
+    const studio_id = req.studio?.id;
+
+    if (!studio_id) {
+      return res.status(400).json({ error: 'Studio ID is required' });
+    }
+
+    const {
+      amount,
+      date,
+      category_id,
+      customer_id,
+      responsible_employee_id,
+      repasse_employee_id,
+      repasse_percentage,
+      payment_method,
+      note,
+      vendor
+    } = req.body;
+
+    const transaction = await Transaction.findOne({
+      where: {
+        id,
+        studio_id,
+      },
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    if (transaction.status !== 'PENDING') {
+      return res.status(400).json({ error: `Cannot approve a transaction with status ${transaction.status}` });
+    }
+
+    const resolvedResponsibleEmployeeId = responsible_employee_id !== undefined
+      ? await requireEmployeeIfTeam(studio_id, responsible_employee_id)
+      : transaction.responsible_employee_id;
+
+    await transaction.update({
+      status: 'CONFIRMED',
+      amount: amount ?? transaction.amount,
+      date: date ?? transaction.date,
+      category_id: category_id ?? transaction.category_id,
+      customer_id: customer_id ?? transaction.customer_id,
+      responsible_employee_id: resolvedResponsibleEmployeeId,
+      repasse_employee_id: repasse_employee_id ?? transaction.repasse_employee_id,
+      repasse_percentage: repasse_percentage ?? transaction.repasse_percentage,
+      payment_method: payment_method ?? transaction.payment_method,
+      note: note ?? transaction.note,
+      vendor: vendor ?? transaction.vendor,
+    });
+
+    return res.status(200).json({ transaction });
+
+  } catch (error: any) {
+
+    if (error instanceof StudioTypeValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+
+    console.error('Error approving transaction:', error);
+
+    return res.status(400).json({
+      error: error?.message ?? 'Failed to approve transaction',
+      details: error?.errors?.map((e: any) => e.message),
+    });
+  }
+};
+
+
+
+export const rejectTransaction = async (req: AuthenticatedRequest, res: Response) => {
+
+  try {
+
+    const id = req.params.id;
+    const studio_id = req.studio?.id;
+
+    if (!studio_id) {
+      return res.status(400).json({ error: 'Studio ID is required' });
+    }
+
+    const transaction = await Transaction.findOne({
+      where: {
+        id,
+        studio_id,
+      },
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    if (transaction.status !== 'PENDING') {
+      return res.status(400).json({ error: `Cannot reject a transaction with status ${transaction.status}` });
+    }
+
+    await transaction.update({ status: 'REJECTED' });
+
+    return res.status(200).json({ transaction });
+
+  } catch (error) {
+
+    console.error('Error rejecting transaction:', error);
+
+    return res.status(500).json({ error: 'Failed to reject transaction' });
   }
 };
 

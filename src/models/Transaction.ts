@@ -3,11 +3,13 @@ import { Studio } from './Studio';
 import { Category } from './Category';
 import { Customer } from './Customer';
 import { Employee } from './Employee';
+import { Appointment } from './Appointment';
 
 type TransactionAttributes = {
   id: number;
   studio_id: string;
   type: 'INCOME' | 'EXPENSE';
+  status: 'PENDING' | 'CONFIRMED' | 'REJECTED';
   amount: number;
   date?: Date;
   category_id?: number;
@@ -20,11 +22,14 @@ type TransactionAttributes = {
   payment_method?: string;
   note?: string;
   vendor?: string;
+
+  appointment_id?: number | null;
 };
 
 type TransactionCreationAttributes = Optional<
   TransactionAttributes,
   | 'id'
+  | 'status'
   | 'date'
   | 'category_id'
   | 'customer_id'
@@ -34,6 +39,7 @@ type TransactionCreationAttributes = Optional<
   | 'payment_method'
   | 'note'
   | 'vendor'
+  | 'appointment_id'
 >;
 
 export class Transaction
@@ -43,6 +49,7 @@ export class Transaction
   declare id: number;
   declare studio_id: string;
   declare type: 'INCOME' | 'EXPENSE';
+  declare status: 'PENDING' | 'CONFIRMED' | 'REJECTED';
   declare amount: number;
   declare date?: Date;
 
@@ -56,6 +63,8 @@ export class Transaction
   declare payment_method?: string;
   declare note?: string;
   declare vendor?: string;
+
+  declare appointment_id?: number | null;
 
   static initModel(sequelize: Sequelize): typeof Transaction {
     return Transaction.init(
@@ -77,6 +86,15 @@ export class Transaction
           allowNull: false,
           validate: {
             isIn: [['INCOME', 'EXPENSE']],
+          },
+        },
+
+        status: {
+          type: DataTypes.STRING,
+          allowNull: false,
+          defaultValue: 'CONFIRMED',
+          validate: {
+            isIn: [['PENDING', 'CONFIRMED', 'REJECTED']],
           },
         },
 
@@ -129,6 +147,11 @@ export class Transaction
           type: DataTypes.STRING,
           allowNull: true,
         },
+
+        appointment_id: {
+          type: DataTypes.INTEGER,
+          allowNull: true,
+        },
       },
       {
         sequelize,
@@ -164,6 +187,11 @@ export class Transaction
     Transaction.belongsTo(Employee, {
       foreignKey: 'repasse_employee_id',
       as: 'repasse_employee',
+    });
+
+    Transaction.belongsTo(Appointment, {
+      foreignKey: 'appointment_id',
+      as: 'appointment',
     });
   }
 }

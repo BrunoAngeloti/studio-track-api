@@ -18,6 +18,8 @@ type StudioAttributes = {
   stripe_subscription_id?: string | null;
   subscription_status?: string | null;
   trial_ends_at?: Date | null;
+  current_period_end?: Date | null;
+  cancel_at_period_end: boolean;
   onboarding_completed: boolean;
   lifetime_free_access: boolean;
   created_at?: Date;
@@ -39,6 +41,8 @@ type StudioCreationAttributes = Optional<
   | 'stripe_subscription_id'
   | 'subscription_status'
   | 'trial_ends_at'
+  | 'current_period_end'
+  | 'cancel_at_period_end'
   | 'onboarding_completed'
   | 'lifetime_free_access'
   | 'created_at'
@@ -63,6 +67,8 @@ export class Studio
   declare stripe_subscription_id?: string | null;
   declare subscription_status?: string | null;
   declare trial_ends_at?: Date | null;
+  declare current_period_end?: Date | null;
+  declare cancel_at_period_end: boolean;
   declare onboarding_completed: boolean;
   declare lifetime_free_access: boolean;
   declare created_at?: Date;
@@ -163,6 +169,17 @@ export class Studio
         trial_ends_at: {
           type: DataTypes.DATE,
           allowNull: true,
+        },
+
+        current_period_end: {
+          type: DataTypes.DATE,
+          allowNull: true,
+        },
+
+        cancel_at_period_end: {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
         },
 
         onboarding_completed: {

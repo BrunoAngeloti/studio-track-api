@@ -1,8 +1,10 @@
 import { Response } from 'express';
+import Stripe from 'stripe';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { Studio } from '../models/Studio';
 import { getStripe } from '../utils/stripe';
 import { syncStudioFromSubscription } from '../utils/subscriptionSync';
+import { serializeStudio } from './studioController';
 
 export const createCheckoutSession = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -30,6 +32,22 @@ export const createCheckoutSession = async (req: AuthenticatedRequest, res: Resp
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const successPath = studio.onboarding_completed ? '/dashboard' : '/cadastro/onboarding';
 
+    // Já teve um trial antes (mesmo que tenha sido cancelado depois): não dá
+    // pra reiniciar o período grátis, senão dá pra ficar "renovando" o trial
+    // pra sempre criando um novo checkout a cada cancelamento.
+    const hasUsedTrial = !!studio.trial_ends_at;
+
+    const subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData = {
+      metadata: { studio_id: studio.id },
+    };
+
+    if (!hasUsedTrial) {
+      subscriptionData.trial_period_days = 7;
+      subscriptionData.trial_settings = {
+        end_behavior: { missing_payment_method: 'cancel' },
+      };
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
@@ -40,13 +58,7 @@ export const createCheckoutSession = async (req: AuthenticatedRequest, res: Resp
           quantity: 1,
         },
       ],
-      subscription_data: {
-        trial_period_days: 7,
-        trial_settings: {
-          end_behavior: { missing_payment_method: 'cancel' },
-        },
-        metadata: { studio_id: studio.id },
-      },
+      subscription_data: subscriptionData,
       success_url: `${frontendUrl}${successPath}?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${frontendUrl}/assinatura?checkout=cancelled`,
     });
@@ -90,21 +102,7 @@ export const confirmCheckoutSession = async (req: AuthenticatedRequest, res: Res
     await studio.reload();
 
     res.status(200).json({
-      studio: {
-        id: studio.id,
-        name: studio.name,
-        email: studio.email,
-        phone: studio.phone,
-        primary_color: studio.primary_color,
-        secondary_color: studio.secondary_color,
-        instagram: studio.instagram,
-        catalog_link: studio.catalog_link,
-        type: studio.type,
-        booking_horizon_months: studio.booking_horizon_months,
-        subscription_status: studio.subscription_status,
-        onboarding_completed: studio.onboarding_completed,
-        lifetime_free_access: studio.lifetime_free_access,
-      },
+      studio: serializeStudio(studio),
     });
   } catch (error) {
     console.error('Error confirming checkout session:', error);

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Appointment } from '../models/Appointment';
 import { AdditionalService } from '../models/AdditionalService';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+import { createPendingTransactionForAppointment } from '../services/appointmentTransactionSync';
 
 export const addAdditionalServiceToAppointment = async (
   req: Request,
@@ -71,6 +72,12 @@ export const addAdditionalServiceToAppointment = async (
     }
 
     await (appointment as any).addAdditional_service(additionalService);
+
+    try {
+      await createPendingTransactionForAppointment(appointment);
+    } catch (syncError) {
+      console.error('Error syncing transaction after adding additional service:', syncError);
+    }
 
     const updatedAppointment = await Appointment.findOne({
       where: {
@@ -165,6 +172,12 @@ export const removeAdditionalServiceFromAppointment = async (
     }
 
     await (appointment as any).removeAdditional_service(additionalService);
+
+    try {
+      await createPendingTransactionForAppointment(appointment);
+    } catch (syncError) {
+      console.error('Error syncing transaction after removing additional service:', syncError);
+    }
 
     const updatedAppointment = await Appointment.findOne({
       where: {

@@ -6,6 +6,8 @@ import jwt from 'jsonwebtoken';
 import { generateUniqueStudioUsername } from '../utils/generateStudioUsername';
 import { seedDefaultCategories } from '../utils/seedDefaultCategories';
 import { isPasswordValid, PASSWORD_REQUIREMENTS_MESSAGE } from '../utils/validatePassword';
+import { getStripe } from '../utils/stripe';
+import { syncStudioFromSubscription } from '../utils/subscriptionSync';
 
 function generateStudioToken(studio: Studio) {
   return jwt.sign(
@@ -19,6 +21,30 @@ function generateStudioToken(studio: Studio) {
       expiresIn: '7d',
     }
   );
+}
+
+// Fonte única do DTO de studio devolvido pela API: evita repetir (e esquecer
+// campos em) o mesmo objeto literal em cada endpoint.
+export function serializeStudio(studio: Studio) {
+  return {
+    id: studio.id,
+    username: studio.username,
+    name: studio.name,
+    email: studio.email,
+    phone: studio.phone,
+    primary_color: studio.primary_color,
+    secondary_color: studio.secondary_color,
+    instagram: studio.instagram,
+    catalog_link: studio.catalog_link,
+    type: studio.type,
+    booking_horizon_months: studio.booking_horizon_months,
+    subscription_status: studio.subscription_status,
+    has_used_trial: !!studio.trial_ends_at,
+    current_period_end: studio.current_period_end,
+    cancel_at_period_end: studio.cancel_at_period_end,
+    onboarding_completed: studio.onboarding_completed,
+    lifetime_free_access: studio.lifetime_free_access,
+  };
 }
 
 export const createStudio = async (req: Request, res: Response) => {
@@ -65,21 +91,7 @@ export const createStudio = async (req: Request, res: Response) => {
 
     res.status(201).json({
       token,
-      studio: {
-        id: studio.id,
-        name: studio.name,
-        email: studio.email,
-        phone: studio.phone,
-        primary_color: studio.primary_color,
-        secondary_color: studio.secondary_color,
-        instagram: studio.instagram,
-        catalog_link: studio.catalog_link,
-        type: studio.type,
-        booking_horizon_months: studio.booking_horizon_months,
-        subscription_status: studio.subscription_status,
-        onboarding_completed: studio.onboarding_completed,
-        lifetime_free_access: studio.lifetime_free_access,
-      },
+      studio: serializeStudio(studio),
     });
   } catch (error: any) {
     console.error('Error creating studio:', error);
@@ -95,37 +107,43 @@ export const createStudio = async (req: Request, res: Response) => {
   }
 };
 
-export const getStudios = (req: AuthenticatedRequest, res: Response) => {
+export const getStudios = async (req: AuthenticatedRequest, res: Response) => {
   const studioId = req.studio?.id;
 
-  Studio.findByPk(studioId)
-    .then((studio) => {
-      if (!studio) {
-        return res.status(404).json({ error: 'Studio not found' });
-      }
+  try {
+    let studio = await Studio.findByPk(studioId);
 
-      res.status(200).json({
-        studio: {
-          id: studio.id,
-          name: studio.name,
-          email: studio.email,
-          phone: studio.phone,
-          primary_color: studio.primary_color,
-          secondary_color: studio.secondary_color,
-          instagram: studio.instagram,
-          catalog_link: studio.catalog_link,
-          type: studio.type,
-          booking_horizon_months: studio.booking_horizon_months,
-          subscription_status: studio.subscription_status,
-          onboarding_completed: studio.onboarding_completed,
-          lifetime_free_access: studio.lifetime_free_access,
-        },
-      });
-    })
-    .catch((error) => {
-      console.error('Error fetching studio:', error);
-      res.status(500).json({ error: 'Failed to fetch studio' });
-    });
+    if (!studio) {
+      return res.status(404).json({ error: 'Studio not found' });
+    }
+
+    const isPresumedActive =
+      studio.subscription_status === 'active' || studio.subscription_status === 'trialing';
+
+    // Rede de segurança: se o webhook do Stripe falhar ou atrasar, o studio
+    // ficaria com status "active"/"trialing" pra sempre mesmo depois da
+    // assinatura ter sido cancelada de verdade no fim do período (ou com
+    // current_period_end/cancel_at_period_end desatualizados). Como este
+    // endpoint é chamado a cada carregamento da dashboard, aproveita pra
+    // sempre reconfirmar direto com o Stripe enquanto o status local parecer
+    // ativo, não só quando o status bate errado.
+    if (isPresumedActive && studio.stripe_subscription_id) {
+      try {
+        const stripe = getStripe();
+        const subscription = await stripe.subscriptions.retrieve(studio.stripe_subscription_id);
+
+        await syncStudioFromSubscription(subscription);
+        studio = await Studio.findByPk(studioId);
+      } catch (stripeError) {
+        console.error('Error re-validating subscription with Stripe:', stripeError);
+      }
+    }
+
+    res.status(200).json({ studio: serializeStudio(studio!) });
+  } catch (error) {
+    console.error('Error fetching studio:', error);
+    res.status(500).json({ error: 'Failed to fetch studio' });
+  }
 };
 
 export const getPublicStudioByUsername = (req: Request, res: Response) => {
@@ -140,21 +158,7 @@ export const getPublicStudioByUsername = (req: Request, res: Response) => {
       }
 
       res.status(200).json({
-        studio: {
-          id: studio.id,
-          username: studio.username,
-          instagram: studio.instagram,
-          catalog_link: studio.catalog_link,
-          name: studio.name,
-          phone: studio.phone,
-          primary_color: studio.primary_color,
-          secondary_color: studio.secondary_color,
-          type: studio.type,
-          booking_horizon_months: studio.booking_horizon_months,
-          subscription_status: studio.subscription_status,
-          onboarding_completed: studio.onboarding_completed,
-          lifetime_free_access: studio.lifetime_free_access,
-        },
+        studio: serializeStudio(studio),
       });
     })
     .catch((error) => {
@@ -222,21 +226,7 @@ export const updateStudio = (req: AuthenticatedRequest, res: Response) => {
     .then((studio) => {
       if (studio) {
         res.status(200).json({
-          studio: {
-            id: studio.id,
-            name: studio.name,
-            email: studio.email,
-            phone: studio.phone,
-            primary_color: studio.primary_color,
-            secondary_color: studio.secondary_color,
-            instagram: studio.instagram,
-            catalog_link: studio.catalog_link,
-            type: studio.type,
-            booking_horizon_months: studio.booking_horizon_months,
-            subscription_status: studio.subscription_status,
-            onboarding_completed: studio.onboarding_completed,
-            lifetime_free_access: studio.lifetime_free_access,
-          },
+          studio: serializeStudio(studio),
         });
       }
     })
@@ -264,21 +254,7 @@ export const updateStudioType = async (req: AuthenticatedRequest, res: Response)
     await studio.update({ type });
 
     res.status(200).json({
-      studio: {
-        id: studio.id,
-        name: studio.name,
-        email: studio.email,
-        phone: studio.phone,
-        primary_color: studio.primary_color,
-        secondary_color: studio.secondary_color,
-        instagram: studio.instagram,
-        catalog_link: studio.catalog_link,
-        type: studio.type,
-        booking_horizon_months: studio.booking_horizon_months,
-        subscription_status: studio.subscription_status,
-        onboarding_completed: studio.onboarding_completed,
-        lifetime_free_access: studio.lifetime_free_access,
-      },
+      studio: serializeStudio(studio),
     });
   } catch (error) {
     console.error('Error updating studio type:', error);
@@ -308,21 +284,7 @@ export const updateBookingHorizon = async (req: AuthenticatedRequest, res: Respo
     await studio.update({ booking_horizon_months });
 
     res.status(200).json({
-      studio: {
-        id: studio.id,
-        name: studio.name,
-        email: studio.email,
-        phone: studio.phone,
-        primary_color: studio.primary_color,
-        secondary_color: studio.secondary_color,
-        instagram: studio.instagram,
-        catalog_link: studio.catalog_link,
-        type: studio.type,
-        booking_horizon_months: studio.booking_horizon_months,
-        subscription_status: studio.subscription_status,
-        onboarding_completed: studio.onboarding_completed,
-        lifetime_free_access: studio.lifetime_free_access,
-      },
+      studio: serializeStudio(studio),
     });
   } catch (error) {
     console.error('Error updating booking horizon:', error);
@@ -343,21 +305,7 @@ export const updateOnboardingCompleted = async (req: AuthenticatedRequest, res: 
     await studio.update({ onboarding_completed: true });
 
     res.status(200).json({
-      studio: {
-        id: studio.id,
-        name: studio.name,
-        email: studio.email,
-        phone: studio.phone,
-        primary_color: studio.primary_color,
-        secondary_color: studio.secondary_color,
-        instagram: studio.instagram,
-        catalog_link: studio.catalog_link,
-        type: studio.type,
-        booking_horizon_months: studio.booking_horizon_months,
-        subscription_status: studio.subscription_status,
-        onboarding_completed: studio.onboarding_completed,
-        lifetime_free_access: studio.lifetime_free_access,
-      },
+      studio: serializeStudio(studio),
     });
   } catch (error) {
     console.error('Error updating onboarding status:', error);
@@ -408,19 +356,7 @@ export const loginStudio = (req: Request, res: Response) => {
       return res.status(200).json({
         message: 'Login successful',
         token,
-        studio: {
-          id: studio.id,
-          name: studio.name,
-          email: studio.email,
-          phone: studio.phone,
-          primary_color: studio.primary_color,
-          secondary_color: studio.secondary_color,
-          type: studio.type,
-          booking_horizon_months: studio.booking_horizon_months,
-          subscription_status: studio.subscription_status,
-          onboarding_completed: studio.onboarding_completed,
-          lifetime_free_access: studio.lifetime_free_access,
-        },
+        studio: serializeStudio(studio),
       });
     })
     .catch((error) => {

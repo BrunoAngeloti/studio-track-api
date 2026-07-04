@@ -4,6 +4,8 @@ import {
   getTransactions,
   getTransactionById,
   updateTransaction,
+  approveTransaction,
+  rejectTransaction,
   deleteTransaction,
 } from '../controllers/transactionsController';
 
@@ -16,6 +18,8 @@ router.post('/transactions', authMiddleware, requireActiveSubscription, createTr
 router.get('/transactions', authMiddleware, requireActiveSubscription, getTransactions);
 router.get('/transactions/:id', authMiddleware, requireActiveSubscription, getTransactionById);
 router.put('/transactions/:id', authMiddleware, requireActiveSubscription, updateTransaction);
+router.patch('/transactions/:id/approve', authMiddleware, requireActiveSubscription, approveTransaction);
+router.patch('/transactions/:id/reject', authMiddleware, requireActiveSubscription, rejectTransaction);
 router.delete('/transactions/:id', authMiddleware, requireActiveSubscription, deleteTransaction);
 
 export default router;

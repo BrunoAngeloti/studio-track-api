@@ -55,6 +55,7 @@ export const getDashboardSummaryService = async ({
 
   const whereClause: any = {
     studio_id: studioId,
+    status: 'CONFIRMED',
     date: {
       [Op.between]: [range.startDate, range.endDate],
     },
@@ -67,6 +68,23 @@ export const getDashboardSummaryService = async ({
   const transactions = await Transaction.findAll({
     where: whereClause,
   })
+
+  const pendingWhereClause: any = {
+    studio_id: studioId,
+    status: 'PENDING',
+    type: 'INCOME',
+    date: {
+      [Op.between]: [range.startDate, range.endDate],
+    },
+  }
+
+  if (employeeId) {
+    pendingWhereClause.responsible_employee_id = Number(employeeId)
+  }
+
+  const pendingIncome = Number(
+    (await Transaction.sum('amount', { where: pendingWhereClause })) || 0
+  )
 
   let income = 0
   let expense = 0
@@ -106,6 +124,7 @@ export const getDashboardSummaryService = async ({
     balance,
     repasse_total: repasseTotal,
     owner_net: ownerNet,
+    pending_income: pendingIncome,
     startDate: range.startDate,
     endDate: range.endDate,
   }
@@ -136,6 +155,7 @@ export const getDashboardCashflowService = async ({
 
   const whereClause: any = {
     studio_id: studioId,
+    status: 'CONFIRMED',
     date: {
       [Op.between]: [range.startDate, range.endDate],
     },
@@ -212,6 +232,7 @@ export const getDashboardTransactionsByCategoryService = async ({
 
   const whereClause: any = {
     studio_id: studioId,
+    status: 'CONFIRMED',
     date: {
       [Op.between]: [range.startDate, range.endDate],
     },
@@ -285,6 +306,7 @@ export const getDashboardPaymentMethodsService = async ({
 
   const whereClause: any = {
     studio_id: studioId,
+    status: 'CONFIRMED',
     type: 'INCOME',
     date: {
       [Op.between]: [range.startDate, range.endDate],
@@ -347,6 +369,7 @@ export const getDashboardEmployeesService = async ({
   const transactions = await Transaction.findAll({
     where: {
       studio_id: studioId,
+      status: 'CONFIRMED',
       type: 'INCOME',
       date: {
         [Op.between]: [range.startDate, range.endDate],
@@ -449,6 +472,7 @@ export const getDashboardRecentTransactionsService = async ({
 
   const whereClause: any = {
     studio_id: studioId,
+    status: 'CONFIRMED',
   }
 
   if (startDate && endDate) {

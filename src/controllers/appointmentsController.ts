@@ -9,7 +9,9 @@ import { Service } from '../models/Service';
 import { AdditionalService } from '../models/AdditionalService';
 import { Studio } from '../models/Studio';
 import { Employee } from '../models/Employee';
+import { Transaction } from '../models/Transaction';
 import { requireEmployeeIfTeam, StudioTypeValidationError } from '../utils/studioType';
+import { createPendingTransactionForAppointment } from '../services/appointmentTransactionSync';
 
 function normalizePhone(phone: string) {
   return phone.replace(/\D/g, '');
@@ -140,6 +142,12 @@ export const createAppointment = async (req: Request, res: Response) => {
       note: note ?? null,
       expires_at: null,
     });
+
+    try {
+      await createPendingTransactionForAppointment(appointment);
+    } catch (syncError) {
+      console.error('Error syncing transaction for created appointment:', syncError);
+    }
 
     return res.status(201).json(appointment);
   } catch (error) {
@@ -393,6 +401,12 @@ export const updateAppointment = async (req: AuthenticatedRequest, res: Response
       status: status ?? appointment.status,
     });
 
+    try {
+      await createPendingTransactionForAppointment(appointment);
+    } catch (syncError) {
+      console.error('Error syncing transaction for updated appointment:', syncError);
+    }
+
     return res.status(200).json(appointment);
   } catch (error) {
     if (error instanceof StudioTypeValidationError) {
@@ -429,6 +443,17 @@ export const deleteAppointment = async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({
         message: 'Appointment not found',
       });
+    }
+
+    const linkedTransaction = await Transaction.findOne({
+      where: { appointment_id: appointment.id },
+    });
+
+    // Transação ainda pendente nunca foi confirmada como receita real, então
+    // some junto com o agendamento. Já confirmada/recusada, ela permanece
+    // como registro financeiro independente (só perde o vínculo via FK).
+    if (linkedTransaction && linkedTransaction.status === 'PENDING') {
+      await linkedTransaction.destroy();
     }
 
     await appointment.destroy();
@@ -546,6 +571,12 @@ export const approveAppointment = async (req: AuthenticatedRequest, res: Respons
       rejected_at: null,
       rejection_reason: null,
     });
+
+    try {
+      await createPendingTransactionForAppointment(appointment);
+    } catch (syncError) {
+      console.error('Error syncing transaction for approved appointment:', syncError);
+    }
 
     return res.status(200).json(appointment);
   } catch (error) {
