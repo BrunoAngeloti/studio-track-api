@@ -1,8 +1,16 @@
 import nodemailer from 'nodemailer';
+import dns from 'node:dns';
+import net from 'node:net';
 
 let transporter: nodemailer.Transporter | null = null;
 
-function getMailTransporter() {
+async function resolveIPv4Host(host: string): Promise<string> {
+  if (net.isIP(host)) return host;
+  const addresses = await dns.promises.resolve4(host);
+  return addresses[0];
+}
+
+async function getMailTransporter() {
   const host = process.env.MAIL_HOST;
   const port = Number(process.env.MAIL_PORT || 465);
   const user = process.env.MAIL_USER;
@@ -13,15 +21,25 @@ function getMailTransporter() {
   }
 
   if (!transporter) {
+    // O resolvedor de DNS do nodemailer consulta A e AAAA e escolhe um endereço
+    // aleatório entre eles. Em hosts de produção com interface IPv6 sem rota real
+    // de saída, isso causa ENETUNREACH de forma intermitente. Resolvendo o IPv4
+    // e conectando direto pelo IP evitamos essa escolha aleatória; `tls.servername`
+    // mantém a validação do certificado usando o hostname original.
+    const ipv4Host = await resolveIPv4Host(host);
+
     transporter = nodemailer.createTransport({
-      host,
+      host: ipv4Host,
       port,
       secure: process.env.MAIL_SECURE !== 'false',
       auth: {
         user,
         pass,
       },
-      family: 4, // força IPv4: alguns hosts de produção não têm rota IPv6 de saída, causando ENETUNREACH
+      tls: {
+        servername: host,
+      },
+      name: host,
     });
   }
 
@@ -39,7 +57,8 @@ export async function sendPasswordResetEmail({
   to: string;
   resetUrl: string;
 }) {
-  await getMailTransporter().sendMail({
+  const mailer = await getMailTransporter();
+  await mailer.sendMail({
     from: getFromEmail(),
     to,
     subject: 'Recupere sua senha do Studio Track',
