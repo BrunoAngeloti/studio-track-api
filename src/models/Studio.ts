@@ -22,6 +22,8 @@ type StudioAttributes = {
   cancel_at_period_end: boolean;
   onboarding_completed: boolean;
   lifetime_free_access: boolean;
+  password_reset_token_hash?: string | null;
+  password_reset_expires_at?: Date | null;
   created_at?: Date;
   updated_at?: Date;
 };
@@ -45,6 +47,8 @@ type StudioCreationAttributes = Optional<
   | 'cancel_at_period_end'
   | 'onboarding_completed'
   | 'lifetime_free_access'
+  | 'password_reset_token_hash'
+  | 'password_reset_expires_at'
   | 'created_at'
   | 'updated_at'
 >;
@@ -71,6 +75,8 @@ export class Studio
   declare cancel_at_period_end: boolean;
   declare onboarding_completed: boolean;
   declare lifetime_free_access: boolean;
+  declare password_reset_token_hash?: string | null;
+  declare password_reset_expires_at?: Date | null;
   declare created_at?: Date;
   declare updated_at?: Date;
   declare instagram?: string;
@@ -192,6 +198,16 @@ export class Studio
           type: DataTypes.BOOLEAN,
           allowNull: false,
           defaultValue: false,
+        },
+
+        password_reset_token_hash: {
+          type: DataTypes.STRING,
+          allowNull: true,
+        },
+
+        password_reset_expires_at: {
+          type: DataTypes.DATE,
+          allowNull: true,
         },
 
         created_at: {

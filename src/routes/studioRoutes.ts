@@ -9,6 +9,8 @@ import {
   deleteStudio,
   loginStudio,
   getPublicStudioByUsername,
+  forgotPassword,
+  resetPassword,
 } from '../controllers/studioController';
 
 import { authMiddleware } from '../middlewares/authMiddleware';
@@ -17,6 +19,8 @@ const router = Router();
 
 router.post('/studios', createStudio);
 router.post('/studios/login', loginStudio);
+router.post('/studios/forgot-password', forgotPassword);
+router.post('/studios/reset-password', resetPassword);
 
 // pública
 router.get('/public/studios/:username', getPublicStudioByUsername);

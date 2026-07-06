@@ -3,11 +3,18 @@ import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import { col, fn, where as sequelizeWhere } from 'sequelize';
 import { generateUniqueStudioUsername } from '../utils/generateStudioUsername';
 import { seedDefaultCategories } from '../utils/seedDefaultCategories';
 import { isPasswordValid, PASSWORD_REQUIREMENTS_MESSAGE } from '../utils/validatePassword';
 import { getStripe } from '../utils/stripe';
 import { syncStudioFromSubscription } from '../utils/subscriptionSync';
+import { sendPasswordResetEmail } from '../utils/email';
+
+const PASSWORD_RESET_EXPIRES_IN_MS = 60 * 60 * 1000;
+const PASSWORD_RESET_GENERIC_MESSAGE =
+  'Se este email estiver cadastrado, enviaremos um link de recuperacao de senha.';
 
 function generateStudioToken(studio: Studio) {
   return jwt.sign(
@@ -21,6 +28,16 @@ function generateStudioToken(studio: Studio) {
       expiresIn: '7d',
     }
   );
+}
+
+function hashPasswordResetToken(token: string) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function buildPasswordResetUrl(token: string) {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+
+  return `${frontendUrl}/recuperar-senha?token=${token}`;
 }
 
 // Fonte única do DTO de studio devolvido pela API: evita repetir (e esquecer
@@ -363,4 +380,91 @@ export const loginStudio = (req: Request, res: Response) => {
       console.error('Error during login:', error);
       return res.status(500).json({ error: 'Failed to login' });
     });
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+
+  if (!email) {
+    return res.status(200).json({ message: PASSWORD_RESET_GENERIC_MESSAGE });
+  }
+
+  try {
+    const studio = await Studio.findOne({
+      where: sequelizeWhere(fn('lower', col('email')), email),
+    });
+
+    if (!studio) {
+      return res.status(200).json({ message: PASSWORD_RESET_GENERIC_MESSAGE });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = hashPasswordResetToken(token);
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRES_IN_MS);
+
+    await studio.update({
+      password_reset_token_hash: tokenHash,
+      password_reset_expires_at: expiresAt,
+    });
+
+    try {
+      await sendPasswordResetEmail({
+        to: studio.email,
+        resetUrl: buildPasswordResetUrl(token),
+      });
+    } catch (emailError) {
+      console.error('Error sending password reset email:', emailError);
+
+      await studio.update({
+        password_reset_token_hash: null,
+        password_reset_expires_at: null,
+      });
+    }
+
+    return res.status(200).json({ message: PASSWORD_RESET_GENERIC_MESSAGE });
+  } catch (error) {
+    console.error('Error during forgot password:', error);
+    return res.status(200).json({ message: PASSWORD_RESET_GENERIC_MESSAGE });
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  const token = typeof req.body.token === 'string' ? req.body.token.trim() : '';
+  const password = typeof req.body.password === 'string' ? req.body.password : '';
+
+  if (!token) {
+    return res.status(400).json({ error: 'Token invalido ou expirado' });
+  }
+
+  if (!isPasswordValid(password)) {
+    return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
+  }
+
+  try {
+    const tokenHash = hashPasswordResetToken(token);
+    const studio = await Studio.findOne({
+      where: {
+        password_reset_token_hash: tokenHash,
+      },
+    });
+
+    if (
+      !studio ||
+      !studio.password_reset_expires_at ||
+      studio.password_reset_expires_at.getTime() < Date.now()
+    ) {
+      return res.status(400).json({ error: 'Token invalido ou expirado' });
+    }
+
+    await studio.update({
+      password: bcrypt.hashSync(password, 10),
+      password_reset_token_hash: null,
+      password_reset_expires_at: null,
+    });
+
+    return res.status(200).json({ message: 'Senha redefinida com sucesso' });
+  } catch (error) {
+    console.error('Error during password reset:', error);
+    return res.status(500).json({ error: 'Failed to reset password' });
+  }
 };
