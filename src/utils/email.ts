@@ -21,6 +21,7 @@ function getMailTransporter() {
         user,
         pass,
       },
+      family: 4, // força IPv4: alguns hosts de produção não têm rota IPv6 de saída, causando ENETUNREACH
     });
   }
 
